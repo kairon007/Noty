@@ -1,31 +1,36 @@
 package de.adrianbartnik.noty;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.dropbox.client2.DropboxAPI;
+import com.dropbox.client2.android.AndroidAuthSession;
+import com.dropbox.client2.session.AppKeyPair;
+
+import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.config.DropboxCredentials;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationDrawerFragment.NavigationDrawerCallbacks {
 
-    /**
-     * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
-     */
+    private static final String TAG = MainActivity.class.getName();
+
+    private DropboxAPI<AndroidAuthSession> mDBApi;
+
     private NavigationDrawerFragment mNavigationDrawerFragment;
 
-    /**
-     * Used to store the last screen title. For use in {@link #restoreActionBar()}.
-     */
     private CharSequence mTitle;
 
     @Override
@@ -33,14 +38,51 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mNavigationDrawerFragment = (NavigationDrawerFragment)
-                getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
+        mNavigationDrawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
         mTitle = getTitle();
 
         // Set up the drawer.
-        mNavigationDrawerFragment.setUp(
-                R.id.navigation_drawer,
-                (DrawerLayout) findViewById(R.id.drawer_layout));
+        mNavigationDrawerFragment.setUp(R.id.navigation_drawer, (DrawerLayout) findViewById(R.id.drawer_layout));
+
+        AppKeyPair appKeys = new AppKeyPair(DropboxCredentials.APP_KEY, DropboxCredentials.APP_SECRET);
+        AndroidAuthSession session = new AndroidAuthSession(appKeys);
+        mDBApi = new DropboxAPI<AndroidAuthSession>(session);
+
+        if(!loadAuth(session))
+            mDBApi.getSession().startOAuth2Authentication(MainActivity.this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        AndroidAuthSession session = mDBApi.getSession();
+
+        if (session.authenticationSuccessful()) {
+            try {
+                // Sets the access token on the session
+                session.finishAuthentication();
+                storeAuth(session);
+
+                String accessToken = mDBApi.getSession().getOAuth2AccessToken();
+            } catch (IllegalStateException e) {
+                Log.i("DbAuthLog", "Error authenticating", e);
+            }
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        if (mDBApi.getSession().authenticationSuccessful()) {
+            try {
+                mDBApi.getSession().unlink();
+
+                String accessToken = mDBApi.getSession().getOAuth2AccessToken();
+            } catch (IllegalStateException e) {
+                Log.i("DbAuthLog", "Error authenticating", e);
+            }
+        }
     }
 
     @Override
@@ -73,13 +115,11 @@ public class MainActivity extends AppCompatActivity
         actionBar.setTitle(mTitle);
     }
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         if (!mNavigationDrawerFragment.isDrawerOpen()) {
-            // Only show items in the action bar relevant to this screen
-            // if the drawer is not showing. Otherwise, let the drawer
-            // decide what to show in the action bar.
+            // Only show items in the action bar relevant to this screen if the drawer is not showing.
+            // Otherwise, let the drawer decide what to show in the action bar.
             getMenuInflater().inflate(R.menu.main, menu);
             restoreActionBar();
             return true;
@@ -89,33 +129,62 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+        // Handle action bar item clicks here. The action bar will automatically handle clicks on the Home/Up button,
+        // so long as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_sign_out) {
             return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
-    /**
-     * A placeholder fragment containing a simple view.
-     */
+    private void storeAuth(AndroidAuthSession session) {
+        String oauth2AccessToken = session.getOAuth2AccessToken();
+
+        if (oauth2AccessToken != null) {
+            SharedPreferences prefs = getSharedPreferences(Constants.ACCOUNT_PREFS_NAME, 0);
+            SharedPreferences.Editor edit = prefs.edit();
+            edit.putString(Constants.ACCESS_SECRET_NAME, oauth2AccessToken);
+            edit.commit();
+        }
+    }
+
+    private boolean loadAuth(AndroidAuthSession session) {
+        SharedPreferences prefs = getSharedPreferences(Constants.ACCOUNT_PREFS_NAME, 0);
+        String secret = prefs.getString(Constants.ACCESS_SECRET_NAME, null);
+
+        if (secret == null || secret.length() == 0)
+            return false;
+
+        session.setOAuth2AccessToken(secret);
+        return true;
+    }
+
+    private void logOut() {
+        // Remove credentials from the session
+        mDBApi.getSession().unlink();
+
+        // Clear our stored keys
+        clearKeys();
+    }
+
+    private void clearKeys() {
+        SharedPreferences prefs = getSharedPreferences(Constants.ACCOUNT_PREFS_NAME, 0);
+        SharedPreferences.Editor edit = prefs.edit();
+        edit.clear();
+        edit.commit();
+    }
+
     public static class PlaceholderFragment extends Fragment {
-        /**
-         * The fragment argument representing the section number for this
-         * fragment.
-         */
+
         private static final String ARG_SECTION_NUMBER = "section_number";
 
-        /**
-         * Returns a new instance of this fragment for the given section
-         * number.
-         */
+        public PlaceholderFragment() {
+        }
+
         public static PlaceholderFragment newInstance(int sectionNumber) {
             PlaceholderFragment fragment = new PlaceholderFragment();
             Bundle args = new Bundle();
@@ -124,12 +193,8 @@ public class MainActivity extends AppCompatActivity
             return fragment;
         }
 
-        public PlaceholderFragment() {
-        }
-
         @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
             return rootView;
         }
@@ -137,8 +202,7 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onAttach(Activity activity) {
             super.onAttach(activity);
-            ((MainActivity) activity).onSectionAttached(
-                    getArguments().getInt(ARG_SECTION_NUMBER));
+            ((MainActivity) activity).onSectionAttached(getArguments().getInt(ARG_SECTION_NUMBER));
         }
     }
 
