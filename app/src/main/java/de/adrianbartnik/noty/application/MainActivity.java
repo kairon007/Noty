@@ -1,29 +1,31 @@
-package de.adrianbartnik.noty;
+package de.adrianbartnik.noty.application;
 
-import android.app.Activity;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
 
 import com.dropbox.client2.DropboxAPI;
+import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
+import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.session.AppKeyPair;
 
+import java.util.ArrayList;
+
+import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.config.DropboxCredentials;
+import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
+import de.adrianbartnik.noty.fragment.NoteFragment;
 
-public class MainActivity extends AppCompatActivity
-        implements NavigationDrawerFragment.NavigationDrawerCallbacks {
+public class MainActivity extends AppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
 
     private static final String TAG = MainActivity.class.getName();
 
@@ -33,23 +35,27 @@ public class MainActivity extends AppCompatActivity
 
     private CharSequence mTitle;
 
+    private ArrayList<Entry> root = new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        mNavigationDrawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
-        mTitle = getTitle();
-
-        // Set up the drawer.
-        mNavigationDrawerFragment.setUp(R.id.navigation_drawer, (DrawerLayout) findViewById(R.id.drawer_layout));
 
         AppKeyPair appKeys = new AppKeyPair(DropboxCredentials.APP_KEY, DropboxCredentials.APP_SECRET);
         AndroidAuthSession session = new AndroidAuthSession(appKeys);
         mDBApi = new DropboxAPI<AndroidAuthSession>(session);
 
-        if(!loadAuth(session))
+        if (!loadAuth(session))
             mDBApi.getSession().startOAuth2Authentication(MainActivity.this);
+
+        new ShowFolderStructure().execute("");
+
+        setContentView(R.layout.activity_main);
+        mTitle = getTitle();
+
+        // Set up the drawer.
+        mNavigationDrawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
+        mNavigationDrawerFragment.setUp(R.id.navigation_drawer, (DrawerLayout) findViewById(R.id.drawer_layout));
     }
 
     @Override
@@ -87,25 +93,14 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onNavigationDrawerItemSelected(int position) {
-        // update the main content by replacing fragments
         FragmentManager fragmentManager = getSupportFragmentManager();
         fragmentManager.beginTransaction()
-                .replace(R.id.container, PlaceholderFragment.newInstance(position + 1))
+                .replace(R.id.container, NoteFragment.newInstance(position))
                 .commit();
     }
 
-    public void onSectionAttached(int number) {
-        switch (number) {
-            case 1:
-                mTitle = getString(R.string.title_section1);
-                break;
-            case 2:
-                mTitle = getString(R.string.title_section2);
-                break;
-            case 3:
-                mTitle = getString(R.string.title_section3);
-                break;
-        }
+    public void onFragmentAttached(Entry entry) {
+        mTitle = entry.fileName();
     }
 
     public void restoreActionBar() {
@@ -120,7 +115,7 @@ public class MainActivity extends AppCompatActivity
         if (!mNavigationDrawerFragment.isDrawerOpen()) {
             // Only show items in the action bar relevant to this screen if the drawer is not showing.
             // Otherwise, let the drawer decide what to show in the action bar.
-            getMenuInflater().inflate(R.menu.main, menu);
+            getMenuInflater().inflate(R.menu.text, menu);
             restoreActionBar();
             return true;
         }
@@ -164,10 +159,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void logOut() {
-        // Remove credentials from the session
         mDBApi.getSession().unlink();
 
-        // Clear our stored keys
         clearKeys();
     }
 
@@ -178,31 +171,40 @@ public class MainActivity extends AppCompatActivity
         edit.commit();
     }
 
-    public static class PlaceholderFragment extends Fragment {
 
-        private static final String ARG_SECTION_NUMBER = "section_number";
 
-        public PlaceholderFragment() {
-        }
+    private class ShowFolderStructure extends AsyncTask<String, Void, Entry> {
 
-        public static PlaceholderFragment newInstance(int sectionNumber) {
-            PlaceholderFragment fragment = new PlaceholderFragment();
-            Bundle args = new Bundle();
-            args.putInt(ARG_SECTION_NUMBER, sectionNumber);
-            fragment.setArguments(args);
-            return fragment;
+        @Override
+        protected Entry doInBackground(String... params) {
+
+            try {
+                return mDBApi.metadata("", 100, null, true, null);
+            } catch (DropboxException e) {
+                e.printStackTrace();
+            }
+
+            return null;
         }
 
         @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-            return rootView;
+        protected void onPostExecute(Entry result) {
+
+            for (Entry e : result.contents) {
+                if (!e.isDeleted) {
+                    Log.i("DropboxEntry", "DropboxEntry - " + String.valueOf(e.isDir) + " Itemname: " + e.fileName());
+                }
+            }
+
+            mNavigationDrawerFragment.addEntries(result.contents);
         }
 
         @Override
-        public void onAttach(Activity activity) {
-            super.onAttach(activity);
-            ((MainActivity) activity).onSectionAttached(getArguments().getInt(ARG_SECTION_NUMBER));
+        protected void onPreExecute() {
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
         }
     }
 
