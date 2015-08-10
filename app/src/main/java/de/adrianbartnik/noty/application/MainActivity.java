@@ -1,7 +1,6 @@
 package de.adrianbartnik.noty.application;
 
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
@@ -14,7 +13,6 @@ import android.view.MenuItem;
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
-import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.session.AppKeyPair;
 
 import java.util.ArrayList;
@@ -24,6 +22,7 @@ import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.config.DropboxCredentials;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 import de.adrianbartnik.noty.fragment.NoteFragment;
+import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 
 public class MainActivity extends AppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
 
@@ -34,8 +33,6 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     private NavigationDrawerFragment mNavigationDrawerFragment;
 
     private CharSequence mTitle;
-
-    private ArrayList<Entry> root = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,14 +45,17 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
         if (!loadAuth(session))
             mDBApi.getSession().startOAuth2Authentication(MainActivity.this);
 
-        new ShowFolderStructure().execute("");
-
         setContentView(R.layout.activity_main);
         mTitle = getTitle();
 
         // Set up the drawer.
         mNavigationDrawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
         mNavigationDrawerFragment.setUp(R.id.navigation_drawer, (DrawerLayout) findViewById(R.id.drawer_layout));
+
+        ShowFolderStructure.setDropboxAPI(mDBApi);
+        ShowFolderStructure.setmNavigationDrawerFragment(mNavigationDrawerFragment);
+
+        new ShowFolderStructure().execute("/");
     }
 
     @Override
@@ -170,42 +170,4 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
         edit.clear();
         edit.commit();
     }
-
-
-
-    private class ShowFolderStructure extends AsyncTask<String, Void, Entry> {
-
-        @Override
-        protected Entry doInBackground(String... params) {
-
-            try {
-                return mDBApi.metadata("", 100, null, true, null);
-            } catch (DropboxException e) {
-                e.printStackTrace();
-            }
-
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Entry result) {
-
-            for (Entry e : result.contents) {
-                if (!e.isDeleted) {
-                    Log.i("DropboxEntry", "DropboxEntry - " + String.valueOf(e.isDir) + " Itemname: " + e.fileName());
-                }
-            }
-
-            mNavigationDrawerFragment.addEntries(result.contents);
-        }
-
-        @Override
-        protected void onPreExecute() {
-        }
-
-        @Override
-        protected void onProgressUpdate(Void... values) {
-        }
-    }
-
 }

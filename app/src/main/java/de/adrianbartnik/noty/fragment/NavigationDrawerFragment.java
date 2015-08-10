@@ -9,6 +9,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -28,12 +29,12 @@ import java.util.List;
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.adapter.NoteAdapter;
 import de.adrianbartnik.noty.config.Constants;
+import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 
 public class NavigationDrawerFragment extends Fragment {
 
-    /**
-     * A pointer to the current callbacks instance (the Activity).
-     */
+    private static final String TAG = NavigationDrawerFragment.class.getName();
+
     private NavigationDrawerCallbacks mCallbacks;
 
     /**
@@ -46,6 +47,8 @@ public class NavigationDrawerFragment extends Fragment {
     private View mFragmentContainerView;
 
     private int mCurrentSelectedPosition = -1;
+    private String mParentFolder = "/";
+    private boolean mInSubfolder = false;
 
     public NavigationDrawerFragment() {
     }
@@ -91,10 +94,13 @@ public class NavigationDrawerFragment extends Fragment {
     }
 
     public void addEntries(List<Entry> entries) {
-        // Can not use addAll because that would require API level 11 (current is 9)
+
         ((ArrayAdapter) mDrawerListView.getAdapter()).clear();
+
+        // Can not use addAll because that would require API level 11 (current is 9)
         for (Entry entry : entries)
-            ((ArrayAdapter) mDrawerListView.getAdapter()).add(entry);
+            ((NoteAdapter) mDrawerListView.getAdapter()).add(entry);
+
         mDrawerListView.invalidateViews();
     }
 
@@ -113,7 +119,7 @@ public class NavigationDrawerFragment extends Fragment {
         // set up the drawer's list view with items and click listener
 
         ActionBar actionBar = getActionBar();
-        actionBar.setDisplayHomeAsUpEnabled(true);
+//        actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.setHomeButtonEnabled(true);
 
         // ActionBarDrawerToggle ties together the the proper interactions between the navigation drawer and the action bar app icon.
@@ -122,6 +128,8 @@ public class NavigationDrawerFragment extends Fragment {
             @Override
             public void onDrawerClosed(View drawerView) {
                 super.onDrawerClosed(drawerView);
+                Log.d(TAG, "Drawer close");
+                getActionBar().setDisplayHomeAsUpEnabled(true);
                 if (!isAdded()) {
                     return;
                 }
@@ -132,6 +140,7 @@ public class NavigationDrawerFragment extends Fragment {
             @Override
             public void onDrawerOpened(View drawerView) {
                 super.onDrawerOpened(drawerView);
+                getActionBar().setDisplayHomeAsUpEnabled(false);
                 if (!isAdded()) {
                     return;
                 }
@@ -141,7 +150,7 @@ public class NavigationDrawerFragment extends Fragment {
         };
 
         mDrawerLayout.openDrawer(mFragmentContainerView);
-
+//        mDrawerToggle.setDrawerIndicatorEnabled(false);
 
         // Defer code dependent on restoration of previous instance state.
         mDrawerLayout.post(new Runnable() {
@@ -163,13 +172,24 @@ public class NavigationDrawerFragment extends Fragment {
             mDrawerListView.setItemChecked(position, true);
         }
         if (mDrawerLayout != null) {
-            mDrawerLayout.closeDrawer(mFragmentContainerView);
-        }
-        if (mCallbacks != null && mDrawerListView == null) {
-            mCallbacks.onNavigationDrawerItemSelected(position);
         }
         if (mCallbacks != null) {
-            mCallbacks.onNavigationDrawerItemSelected(position);
+
+            Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
+
+            Log.d(TAG, "Subfolder: " + mInSubfolder + " ParentFolder: " + mParentFolder);
+
+            if (entry.isDir) {
+                mParentFolder = entry.parentPath();
+                mInSubfolder = true;
+                Log.d(TAG, mParentFolder);
+                getActivity().supportInvalidateOptionsMenu(); // calls onPrepareOptionsMenu()
+                new ShowFolderStructure().execute(mParentFolder + "/" + entry.fileName() + "/");
+
+            } else {
+                mDrawerLayout.closeDrawer(mFragmentContainerView);
+                mCallbacks.onNavigationDrawerItemSelected(position);
+            }
         }
     }
 
@@ -211,6 +231,8 @@ public class NavigationDrawerFragment extends Fragment {
         // If the drawer is open, show the global app actions in the action bar.
         // See also showGlobalContextActionBar, which controls the top-left area of the action bar.
         if (mDrawerLayout != null && isDrawerOpen()) {
+            if(mInSubfolder)
+                getActionBar().setDisplayHomeAsUpEnabled(true);
             inflater.inflate(R.menu.drawer, menu);
             showGlobalContextActionBar();
         }
@@ -219,11 +241,22 @@ public class NavigationDrawerFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+
+        if (item.getItemId() == android.R.id.home) {
+            if (!isDrawerOpen())
+                mDrawerLayout.openDrawer(mFragmentContainerView);
+            Toast.makeText(getActivity(), "Clicked up.", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+
+        Log.d(TAG, "ItemID: " + item.getItemId());
+
         if (mDrawerToggle.onOptionsItemSelected(item)) {
             return true;
         }
 
         if (item.getItemId() == R.id.action_sync) {
+            getActionBar().setDisplayHomeAsUpEnabled(true);
             Toast.makeText(getActivity(), "Example action.", Toast.LENGTH_SHORT).show();
             return true;
         }
@@ -237,15 +270,14 @@ public class NavigationDrawerFragment extends Fragment {
      */
     private void showGlobalContextActionBar() {
         ActionBar actionBar = getActionBar();
-        actionBar.setDisplayShowTitleEnabled(true);
-        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
+//        actionBar.setDisplayShowTitleEnabled(true);
+//        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
         actionBar.setTitle(R.string.app_name);
     }
 
     private ActionBar getActionBar() {
         return ((AppCompatActivity) getActivity()).getSupportActionBar();
     }
-
 
     public interface NavigationDrawerCallbacks {
         void onNavigationDrawerItemSelected(int position);

@@ -2,6 +2,8 @@ package de.adrianbartnik.noty.adapter;
 
 
 import android.content.Context;
+import android.graphics.Typeface;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +18,8 @@ import de.adrianbartnik.noty.R;
 
 public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
 
+    private static final String TAG = NoteAdapter.class.getName();
+
     private Context context;
     private ArrayList<DropboxAPI.Entry> entries;
 
@@ -23,10 +27,6 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
         super(context, R.layout.layout_item_note, entries);
         this.context = context;
         this.entries = entries;
-    }
-
-    public static class ViewHolder{
-        TextView title;
     }
 
     @Override
@@ -40,8 +40,21 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
     }
 
     @Override
-    public long getItemId(int i) {
-        return entries.get(i).hashCode();
+    public long getItemId(int position) {
+        if (position >= entries.size()) {
+            Log.d(TAG, "Error accesing element at position " + position + " while entries only holds " + entries.size() + " entries");
+            return position;
+        }
+        return entries.get(position).hashCode();
+    }
+
+    @Override
+    public void clear() {
+        entries.clear();
+    }
+
+    public ArrayList<DropboxAPI.Entry> getEntries() {
+        return entries;
     }
 
     @Override
@@ -73,10 +86,20 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
             viewHolder = (ViewHolder) convertView.getTag();
         }
 
+        if (entry.isDir) {
+            viewHolder.title.setTypeface(null, Typeface.ITALIC);
+        } else {
+            viewHolder.title.setTypeface(null, Typeface.NORMAL);
+        }
+
         // TODO Change Font, etc. if new synchronized
 
         viewHolder.title.setText(entry.fileName());
 
         return convertView;
+    }
+
+    public static class ViewHolder {
+        TextView title;
     }
 }
