@@ -30,7 +30,6 @@ import java.util.List;
 
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.adapter.NoteAdapter;
-import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 
 public class NavigationDrawerFragment extends Fragment {
@@ -39,23 +38,15 @@ public class NavigationDrawerFragment extends Fragment {
 
     private NavigationDrawerCallbacks mCallbacks;
 
-    /**
-     * Helper component that ties the action bar to the navigation drawer.
-     */
     private ActionBarDrawerToggle mDrawerToggle;
 
     private DrawerLayout mDrawerLayout;
     private ListView mDrawerListView;
     private View mFragmentContainerView;
 
-    private int mCurrentSelectedPosition = -1;
     private String mCurrentFolder = "/";
     private boolean mInSubfolder = false;
     private DropboxAPI<AndroidAuthSession> mDPApi;
-
-    public NavigationDrawerFragment() {
-        Log.d(TAG, "In NavigationDrawerConstructor");
-    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -70,13 +61,6 @@ public class NavigationDrawerFragment extends Fragment {
         });
         NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<Entry>());
         mDrawerListView.setAdapter(noteAdapter);
-
-        if (savedInstanceState != null) {
-            mCurrentSelectedPosition = savedInstanceState.getInt(Constants.STATE_SELECTED_POSITION);
-        }
-
-        // Select either the default item (0) or the last selected item.
-        selectItem(mCurrentSelectedPosition);
     }
 
     @Override
@@ -87,8 +71,6 @@ public class NavigationDrawerFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
-//        mDrawerListView.setItemChecked(mCurrentSelectedPosition, true);
         return mDrawerListView;
     }
 
@@ -99,7 +81,6 @@ public class NavigationDrawerFragment extends Fragment {
     public void addEntries(List<Entry> entries) {
 
         if(!mInSubfolder){
-            Log.d(TAG, "addEntries: Not in Subfolder");
             getActionBar().setHomeButtonEnabled(false);
             getActivity().supportInvalidateOptionsMenu();
         } else
@@ -140,10 +121,8 @@ public class NavigationDrawerFragment extends Fragment {
 
         // set a custom shadow that overlays the main content when the drawer opens
         mDrawerLayout.setDrawerShadow(R.drawable.drawer_shadow, GravityCompat.START);
-        // set up the drawer's list view with items and click listener
 
         ActionBar actionBar = getActionBar();
-//        actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.setHomeButtonEnabled(true);
 
         // ActionBarDrawerToggle ties together the the proper interactions between the navigation drawer and the action bar app icon.
@@ -152,8 +131,6 @@ public class NavigationDrawerFragment extends Fragment {
             @Override
             public void onDrawerClosed(View drawerView) {
                 super.onDrawerClosed(drawerView);
-                Log.d(TAG, "Drawer close");
-                Log.d(TAG, "ParentFolder: " + mCurrentFolder + " SubFolder: " + mInSubfolder);
                 getActionBar().setDisplayHomeAsUpEnabled(true);
                 if (!isAdded()) {
                     return;
@@ -175,7 +152,6 @@ public class NavigationDrawerFragment extends Fragment {
         };
 
         mDrawerLayout.openDrawer(mFragmentContainerView);
-//        mDrawerToggle.setDrawerIndicatorEnabled(false);
 
         // Defer code dependent on restoration of previous instance state.
         mDrawerLayout.post(new Runnable() {
@@ -189,21 +165,15 @@ public class NavigationDrawerFragment extends Fragment {
     }
 
     private void selectItem(int position) {
-        mCurrentSelectedPosition = position;
 
-        if (position == -1)
+        if (position < 0)
             return;
-        if (mDrawerListView != null) {
-            mDrawerListView.setItemChecked(position, true);
-        }
-        if (mDrawerLayout != null) {
-        }
+
         if (mCallbacks != null) {
 
             Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
 
-            Log.d(TAG, "Subfolder: " + mInSubfolder + " ParentFolder: " + mCurrentFolder + " Entry: " + entry.fileName()
-                + "\n" + "Path: " + entry.path + " root: " + entry.root);
+            Log.d(TAG, "Subfolder: " + mInSubfolder  + " Entry: " + entry.fileName() + "Path: " + entry.path);
 
             if (entry.isDir) {
                 mCurrentFolder = entry.parentPath();
@@ -237,7 +207,6 @@ public class NavigationDrawerFragment extends Fragment {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putInt(Constants.STATE_SELECTED_POSITION, mCurrentSelectedPosition);
     }
 
     @Override
@@ -265,46 +234,44 @@ public class NavigationDrawerFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
-        if (item.getItemId() == android.R.id.home) {
-            if (!isDrawerOpen())
-                mDrawerLayout.openDrawer(mFragmentContainerView);
-            else {
-                if(mCurrentFolder.lastIndexOf('/') == 0) {
-                    mCurrentFolder = "/";
-                    mInSubfolder = false;
-                }
-                else
-                    mCurrentFolder = mCurrentFolder.substring(0, mCurrentFolder.lastIndexOf('/'));
-                new ShowFolderStructure(mDPApi, this).execute(mCurrentFolder);
-                Log.d(TAG, "Parentfolder: " + mCurrentFolder);
-            }
-            Toast.makeText(getActivity(), "Clicked up.", Toast.LENGTH_SHORT).show();
-            return true;
-        }
+        Log.d(TAG, "OptionMenu klicked. Item: " + item.getItemId() + " SignoutID: " + R.id.action_sign_out);
 
-        Log.d(TAG, "ItemID: " + item.getItemId());
+        switch (item.getItemId()){
+            case android.R.id.home:
+                if (!isDrawerOpen())
+                    mDrawerLayout.openDrawer(mFragmentContainerView);
+                else {
+                    if(mCurrentFolder.lastIndexOf('/') == 0) {
+                        mCurrentFolder = "/";
+                        mInSubfolder = false;
+                    }
+                    else
+                        mCurrentFolder = mCurrentFolder.substring(0, mCurrentFolder.lastIndexOf('/'));
+                    new ShowFolderStructure(mDPApi, this).execute(mCurrentFolder);
+                }
+                Toast.makeText(getActivity(), "Clicked up.", Toast.LENGTH_SHORT).show();
+                return true;
+
+            case R.id.action_sync:
+                new ShowFolderStructure(mDPApi, this);
+                Toast.makeText(getActivity(), "Klicked Sync", Toast.LENGTH_SHORT).show();
+                return true;
+
+            case R.id.action_sign_out:
+                Toast.makeText(getActivity(), "Sign out", Toast.LENGTH_SHORT).show();
+                mCallbacks.onClickedSignOut();
+                return true;
+        }
 
         if (mDrawerToggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-
-        if (item.getItemId() == R.id.action_sync) {
-            getActionBar().setDisplayHomeAsUpEnabled(true);
-            Toast.makeText(getActivity(), "Example action.", Toast.LENGTH_SHORT).show();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
-    /**
-     * Per the navigation drawer design guidelines, updates the action bar to show the global app
-     * 'context', rather than just what's in the current screen.
-     */
     private void showGlobalContextActionBar() {
         ActionBar actionBar = getActionBar();
-//        actionBar.setDisplayShowTitleEnabled(true);
-//        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
         actionBar.setTitle(R.string.app_name);
     }
 
@@ -318,5 +285,6 @@ public class NavigationDrawerFragment extends Fragment {
 
     public interface NavigationDrawerCallbacks {
         void onNavigationDrawerItemSelected(Entry file);
+        void onClickedSignOut();
     }
 }
