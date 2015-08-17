@@ -15,13 +15,12 @@ import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
 import com.dropbox.client2.session.AppKeyPair;
 
-import java.util.ArrayList;
-
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.config.DropboxCredentials;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 import de.adrianbartnik.noty.fragment.NoteFragment;
+import de.adrianbartnik.noty.tasks.DownloadFile;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 
 public class MainActivity extends AppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
@@ -51,11 +50,9 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
         // Set up the drawer.
         mNavigationDrawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
         mNavigationDrawerFragment.setUp(R.id.navigation_drawer, (DrawerLayout) findViewById(R.id.drawer_layout));
+        mNavigationDrawerFragment.setmDPApi(mDBApi);
 
-        ShowFolderStructure.setDropboxAPI(mDBApi);
-        ShowFolderStructure.setmNavigationDrawerFragment(mNavigationDrawerFragment);
-
-        new ShowFolderStructure().execute("/");
+        new ShowFolderStructure(mDBApi, mNavigationDrawerFragment).execute("/");
     }
 
     @Override
@@ -92,20 +89,19 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     }
 
     @Override
-    public void onNavigationDrawerItemSelected(int position) {
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        fragmentManager.beginTransaction()
-                .replace(R.id.container, NoteFragment.newInstance(position))
-                .commit();
+    public void onNavigationDrawerItemSelected(Entry file) {
+        DownloadFile task = new DownloadFile(this, mDBApi, file);
+        task.execute();
     }
 
-    public void onFragmentAttached(Entry entry) {
-        mTitle = entry.fileName();
+    public void onFragmentAttached(String title) {
+        mTitle = title;
+        restoreActionBar();
     }
 
     public void restoreActionBar() {
         ActionBar actionBar = getSupportActionBar();
-        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
+//        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
         actionBar.setDisplayShowTitleEnabled(true);
         actionBar.setTitle(mTitle);
     }

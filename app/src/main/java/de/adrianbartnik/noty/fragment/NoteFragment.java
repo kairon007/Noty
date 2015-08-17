@@ -9,28 +9,24 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 
-import com.dropbox.client2.DropboxAPI;
-
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.application.MainActivity;
-
-import de.adrianbartnik.noty.adapter.NoteAdapter;
 
 public class NoteFragment extends Fragment {
 
     private static final String TAG = NoteFragment.class.getName();
 
-    private static final String entryPosition = "entry_position";
-    private static NoteAdapter adapter;
-    private DropboxAPI.Entry note;
+    private static final String titleKey = "titleKey";
+    private static final String contentKey = "contentKey";
 
     public NoteFragment() {
     }
 
-    public static NoteFragment newInstance(int position) {
+    public static NoteFragment newInstance(String title, String content) {
         NoteFragment fragment = new NoteFragment();
         Bundle args = new Bundle();
-        args.putInt(entryPosition, position);
+        args.putString(titleKey, title);
+        args.putString(contentKey, content);
         fragment.setArguments(args);
         return fragment;
     }
@@ -39,20 +35,16 @@ public class NoteFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        int position = this.getArguments().getInt(entryPosition, -1);
-        Log.d(TAG, "Position: " + position);
+        String title = this.getArguments().getString(titleKey);
+        String content = this.getArguments().getString(contentKey);
+        Log.d(TAG, "Title: " + title + " Content: " + content);
 
-        note = adapter.getItem(position);
         EditText editText = (EditText) rootView.findViewById(R.id.note_content);
-        editText.setText(note.fileName());
+        editText.setText(content);
 
-        ((MainActivity) getActivity()).onFragmentAttached(note);
+        ((MainActivity) getActivity()).onFragmentAttached(title);
 
         return rootView;
-    }
-
-    public static void setAdapter(NoteAdapter a) {
-        adapter = a;
     }
 
     @Override

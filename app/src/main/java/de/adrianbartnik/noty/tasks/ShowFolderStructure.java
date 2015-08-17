@@ -1,8 +1,10 @@
 package de.adrianbartnik.noty.tasks;
 
 
+import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.ImageView;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.exception.DropboxException;
@@ -13,21 +15,18 @@ public class ShowFolderStructure extends AsyncTask<String, Void, DropboxAPI.Entr
 
     private static final String TAG = ShowFolderStructure.class.getName();
 
-    private static DropboxAPI mDBApi;
-    private static NavigationDrawerFragment mNavigationDrawerFragment;
+    private DropboxAPI mDBApi;
+    private NavigationDrawerFragment mNavigationDrawerFragment;
 
-    public static void setDropboxAPI(DropboxAPI api){
+    public ShowFolderStructure(DropboxAPI<?> api, NavigationDrawerFragment drawerFragment) {
         mDBApi = api;
+        mNavigationDrawerFragment = drawerFragment;
     }
 
-    public static void setmNavigationDrawerFragment(NavigationDrawerFragment fragment){
-        mNavigationDrawerFragment = fragment;
-    }
-
-    @Override
+        @Override
     protected DropboxAPI.Entry doInBackground(String... params) {
 
-        Log.d(TAG, "Getting Dropbox content for path: " + params);
+        Log.d(TAG, "Getting Dropbox content for path: " + params[0]);
 
         try {
             return mDBApi.metadata(params[0], 200, null, true, null);
@@ -46,7 +45,7 @@ public class ShowFolderStructure extends AsyncTask<String, Void, DropboxAPI.Entr
 
         for (DropboxAPI.Entry e : result.contents) {
             if (!e.isDeleted) {
-                Log.i("DropboxEntry", "DropboxEntry - " + String.valueOf(e.isDir) + " Itemname: " + e.fileName() + " ParentPath: " + e.parentPath() + " Path: " + e.path);
+//                Log.i("DropboxEntry", "DropboxEntry - " + String.valueOf(e.isDir) + " Itemname: " + e.fileName() + " ParentPath: " + e.parentPath() + " Path: " + e.path);
             }
         }
 

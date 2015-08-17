@@ -21,7 +21,9 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
+import com.dropbox.client2.android.AndroidAuthSession;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,10 +49,12 @@ public class NavigationDrawerFragment extends Fragment {
     private View mFragmentContainerView;
 
     private int mCurrentSelectedPosition = -1;
-    private String mParentFolder = "/";
+    private String mCurrentFolder = "/";
     private boolean mInSubfolder = false;
+    private DropboxAPI<AndroidAuthSession> mDPApi;
 
     public NavigationDrawerFragment() {
+        Log.d(TAG, "In NavigationDrawerConstructor");
     }
 
     @Override
@@ -66,7 +70,6 @@ public class NavigationDrawerFragment extends Fragment {
         });
         NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<Entry>());
         mDrawerListView.setAdapter(noteAdapter);
-        NoteFragment.setAdapter(noteAdapter);
 
         if (savedInstanceState != null) {
             mCurrentSelectedPosition = savedInstanceState.getInt(Constants.STATE_SELECTED_POSITION);
@@ -95,11 +98,32 @@ public class NavigationDrawerFragment extends Fragment {
 
     public void addEntries(List<Entry> entries) {
 
+        if(!mInSubfolder){
+            Log.d(TAG, "addEntries: Not in Subfolder");
+            getActionBar().setHomeButtonEnabled(false);
+            getActivity().supportInvalidateOptionsMenu();
+        } else
+            getActionBar().setHomeButtonEnabled(true);
+
         ((ArrayAdapter) mDrawerListView.getAdapter()).clear();
 
-        // Can not use addAll because that would require API level 11 (current is 9)
-        for (Entry entry : entries)
-            ((NoteAdapter) mDrawerListView.getAdapter()).add(entry);
+        int size = entries.size();
+        Entry entry;
+
+        // First show folders and then files.
+        // First add all folders, remove them from entries and then add remaining files
+        for(int i = 0; i < size; i++){
+            entry = entries.get(i);
+            if(entry.isDir){
+                ((NoteAdapter) mDrawerListView.getAdapter()).add(entry);
+                entries.remove(i);
+                i -= 1;
+                size -= 1;
+            }
+        }
+
+        for (Entry e : entries)
+            ((NoteAdapter) mDrawerListView.getAdapter()).add(e);
 
         mDrawerListView.invalidateViews();
     }
@@ -129,6 +153,7 @@ public class NavigationDrawerFragment extends Fragment {
             public void onDrawerClosed(View drawerView) {
                 super.onDrawerClosed(drawerView);
                 Log.d(TAG, "Drawer close");
+                Log.d(TAG, "ParentFolder: " + mCurrentFolder + " SubFolder: " + mInSubfolder);
                 getActionBar().setDisplayHomeAsUpEnabled(true);
                 if (!isAdded()) {
                     return;
@@ -177,24 +202,20 @@ public class NavigationDrawerFragment extends Fragment {
 
             Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
 
-            Log.d(TAG, "Subfolder: " + mInSubfolder + " ParentFolder: " + mParentFolder);
+            Log.d(TAG, "Subfolder: " + mInSubfolder + " ParentFolder: " + mCurrentFolder + " Entry: " + entry.fileName()
+                + "\n" + "Path: " + entry.path + " root: " + entry.root);
 
             if (entry.isDir) {
-                mParentFolder = entry.parentPath();
+                mCurrentFolder = entry.parentPath();
                 mInSubfolder = true;
-                Log.d(TAG, mParentFolder);
                 getActivity().supportInvalidateOptionsMenu(); // calls onPrepareOptionsMenu()
-                new ShowFolderStructure().execute(mParentFolder + "/" + entry.fileName() + "/");
+                new ShowFolderStructure(mDPApi, this).execute(mCurrentFolder + entry.fileName() + "/");
 
             } else {
                 mDrawerLayout.closeDrawer(mFragmentContainerView);
-                mCallbacks.onNavigationDrawerItemSelected(position);
+                mCallbacks.onNavigationDrawerItemSelected(entry);
             }
         }
-    }
-
-    public Entry getNote(int position) {
-        return ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
     }
 
     @Override
@@ -233,6 +254,8 @@ public class NavigationDrawerFragment extends Fragment {
         if (mDrawerLayout != null && isDrawerOpen()) {
             if(mInSubfolder)
                 getActionBar().setDisplayHomeAsUpEnabled(true);
+            else
+                getActionBar().setDisplayHomeAsUpEnabled(false);
             inflater.inflate(R.menu.drawer, menu);
             showGlobalContextActionBar();
         }
@@ -245,6 +268,16 @@ public class NavigationDrawerFragment extends Fragment {
         if (item.getItemId() == android.R.id.home) {
             if (!isDrawerOpen())
                 mDrawerLayout.openDrawer(mFragmentContainerView);
+            else {
+                if(mCurrentFolder.lastIndexOf('/') == 0) {
+                    mCurrentFolder = "/";
+                    mInSubfolder = false;
+                }
+                else
+                    mCurrentFolder = mCurrentFolder.substring(0, mCurrentFolder.lastIndexOf('/'));
+                new ShowFolderStructure(mDPApi, this).execute(mCurrentFolder);
+                Log.d(TAG, "Parentfolder: " + mCurrentFolder);
+            }
             Toast.makeText(getActivity(), "Clicked up.", Toast.LENGTH_SHORT).show();
             return true;
         }
@@ -279,7 +312,11 @@ public class NavigationDrawerFragment extends Fragment {
         return ((AppCompatActivity) getActivity()).getSupportActionBar();
     }
 
+    public void setmDPApi(DropboxAPI<AndroidAuthSession> mDPApi) {
+        this.mDPApi = mDPApi;
+    }
+
     public interface NavigationDrawerCallbacks {
-        void onNavigationDrawerItemSelected(int position);
+        void onNavigationDrawerItemSelected(Entry file);
     }
 }
