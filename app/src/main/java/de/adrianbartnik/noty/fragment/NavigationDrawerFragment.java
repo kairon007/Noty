@@ -46,7 +46,7 @@ public class NavigationDrawerFragment extends Fragment {
 
     private String mCurrentFolder = "/";
     private boolean mInSubfolder = false;
-    private DropboxAPI<AndroidAuthSession> mDPApi;
+    private DropboxAPI<AndroidAuthSession> mDBApi;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -179,7 +179,7 @@ public class NavigationDrawerFragment extends Fragment {
                 mCurrentFolder = entry.parentPath();
                 mInSubfolder = true;
                 getActivity().supportInvalidateOptionsMenu(); // calls onPrepareOptionsMenu()
-                new ShowFolderStructure(mDPApi, this).execute(mCurrentFolder + entry.fileName() + "/");
+                new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder + entry.fileName() + "/");
 
             } else {
                 mDrawerLayout.closeDrawer(mFragmentContainerView);
@@ -247,13 +247,13 @@ public class NavigationDrawerFragment extends Fragment {
                     }
                     else
                         mCurrentFolder = mCurrentFolder.substring(0, mCurrentFolder.lastIndexOf('/'));
-                    new ShowFolderStructure(mDPApi, this).execute(mCurrentFolder);
+                    new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder);
                 }
                 Toast.makeText(getActivity(), "Clicked up.", Toast.LENGTH_SHORT).show();
                 return true;
 
             case R.id.action_sync:
-                new ShowFolderStructure(mDPApi, this);
+                new ShowFolderStructure(mDBApi, this);
                 Toast.makeText(getActivity(), "Klicked Sync", Toast.LENGTH_SHORT).show();
                 return true;
 
@@ -279,8 +279,8 @@ public class NavigationDrawerFragment extends Fragment {
         return ((AppCompatActivity) getActivity()).getSupportActionBar();
     }
 
-    public void setmDPApi(DropboxAPI<AndroidAuthSession> mDPApi) {
-        this.mDPApi = mDPApi;
+    public void setmDBApi(DropboxAPI<AndroidAuthSession> mDBApi) {
+        this.mDBApi = mDBApi;
     }
 
     public interface NavigationDrawerCallbacks {

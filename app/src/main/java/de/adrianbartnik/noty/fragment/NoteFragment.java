@@ -10,7 +10,7 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 
 import de.adrianbartnik.noty.R;
-import de.adrianbartnik.noty.application.MainActivity;
+import de.adrianbartnik.noty.activity.MainActivity;
 
 public class NoteFragment extends Fragment {
 

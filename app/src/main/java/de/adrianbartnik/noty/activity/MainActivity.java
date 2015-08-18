@@ -1,5 +1,6 @@
-package de.adrianbartnik.noty.application;
+package de.adrianbartnik.noty.activity;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
@@ -12,11 +13,10 @@ import android.view.MenuItem;
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
-import com.dropbox.client2.session.AppKeyPair;
 
 import de.adrianbartnik.noty.R;
+import de.adrianbartnik.noty.application.MyApplication;
 import de.adrianbartnik.noty.config.Constants;
-import de.adrianbartnik.noty.config.DropboxCredentials;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 import de.adrianbartnik.noty.tasks.DownloadFile;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
@@ -35,12 +35,7 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        AppKeyPair appKeys = new AppKeyPair(DropboxCredentials.APP_KEY, DropboxCredentials.APP_SECRET);
-        AndroidAuthSession session = new AndroidAuthSession(appKeys);
-        mDBApi = new DropboxAPI<AndroidAuthSession>(session);
-
-        if (!loadAuth(session))
-            mDBApi.getSession().startOAuth2Authentication(MainActivity.this);
+        mDBApi = ((MyApplication) getApplication()).getAndroidAPI();
 
         setContentView(R.layout.activity_main);
         mTitle = getTitle();
@@ -48,27 +43,9 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
         // Set up the drawer.
         mNavigationDrawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
         mNavigationDrawerFragment.setUp(R.id.navigation_drawer, (DrawerLayout) findViewById(R.id.drawer_layout));
-        mNavigationDrawerFragment.setmDPApi(mDBApi);
+        mNavigationDrawerFragment.setmDBApi(mDBApi);
 
         new ShowFolderStructure(mDBApi, mNavigationDrawerFragment).execute("/");
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        AndroidAuthSession session = mDBApi.getSession();
-
-        if (session.authenticationSuccessful()) {
-            try {
-                // Sets the access token on the session
-                session.finishAuthentication();
-                storeAuth(session);
-
-                String accessToken = mDBApi.getSession().getOAuth2AccessToken();
-            } catch (IllegalStateException e) {
-                Log.i("DbAuthLog", "Error authenticating", e);
-            }
-        }
     }
 
     @Override
@@ -95,6 +72,8 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     @Override
     public void onClickedSignOut(){
         logOut();
+        Intent login = new Intent(this, DropboxLogin.class);
+        startActivity(login);
     }
 
     public void onFragmentAttached(String title) {
@@ -104,7 +83,6 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
 
     public void restoreActionBar() {
         ActionBar actionBar = getSupportActionBar();
-//        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
         actionBar.setDisplayShowTitleEnabled(true);
         actionBar.setTitle(mTitle);
     }
@@ -130,32 +108,13 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
         return super.onOptionsItemSelected(item);
     }
 
-    private void storeAuth(AndroidAuthSession session) {
-        String oauth2AccessToken = session.getOAuth2AccessToken();
-
-        if (oauth2AccessToken != null) {
-            SharedPreferences prefs = getSharedPreferences(Constants.ACCOUNT_PREFS_NAME, 0);
-            SharedPreferences.Editor edit = prefs.edit();
-            edit.putString(Constants.ACCESS_SECRET_NAME, oauth2AccessToken);
-            edit.commit();
-        }
-    }
-
-    private boolean loadAuth(AndroidAuthSession session) {
-        SharedPreferences prefs = getSharedPreferences(Constants.ACCOUNT_PREFS_NAME, 0);
-        String secret = prefs.getString(Constants.ACCESS_SECRET_NAME, null);
-
-        if (secret == null || secret.length() == 0)
-            return false;
-
-        session.setOAuth2AccessToken(secret);
-        return true;
-    }
-
     private void logOut() {
         mDBApi.getSession().unlink();
 
         clearKeys();
+
+        Intent intent = new Intent(this, DropboxLogin.class);
+        startService(intent);
     }
 
     private void clearKeys() {

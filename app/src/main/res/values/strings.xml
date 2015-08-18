@@ -1,16 +1,15 @@
 <resources>
     <string name="app_name">Noty</string>
 
-    <string name="title_section1">Section 1</string>
-    <string name="title_section2">Section 2</string>
-    <string name="title_section3">Section 3</string>
+    <string name="title_login">Login</string>
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
 
-    <string name="action_example">Example action</string>
-
     <string name="action_sign_out">Sign out</string>
     <string name="action_create_folder">Create Folder</string>
     <string name="action_sync">Sync</string>
+
+    <string name="DropboxLoginMessage">This app requires a dropbox account</string>
+    <string name="DropboxLoginButton">Login to Dropbox</string>
 </resources>
