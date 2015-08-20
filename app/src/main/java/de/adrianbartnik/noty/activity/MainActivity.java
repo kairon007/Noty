@@ -64,8 +64,8 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     }
 
     @Override
-    public void onNavigationDrawerItemSelected(Entry file) {
-        DownloadFile task = new DownloadFile(this, mDBApi, file);
+    public void onNavigationDrawerItemSelected(Entry entry) {
+        DownloadFile task = new DownloadFile(this, mDBApi, entry, mNavigationDrawerFragment);
         task.execute();
     }
 

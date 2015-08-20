@@ -37,7 +37,7 @@ public class NoteFragment extends Fragment {
 
         String title = this.getArguments().getString(titleKey);
         String content = this.getArguments().getString(contentKey);
-        Log.d(TAG, "Title: " + title + " Content: " + content);
+        Log.d(TAG, "Opening NoteFragment: Title: " + title + " Content: " + content);
 
         EditText editText = (EditText) rootView.findViewById(R.id.note_content);
         editText.setText(content);

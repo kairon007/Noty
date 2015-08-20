@@ -1,15 +1,14 @@
 package de.adrianbartnik.noty.tasks;
 
+
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentManager;
 import android.util.Log;
 import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
-import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.ProgressListener;
 import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.exception.DropboxIOException;
@@ -18,31 +17,21 @@ import com.dropbox.client2.exception.DropboxPartialFileException;
 import com.dropbox.client2.exception.DropboxServerException;
 import com.dropbox.client2.exception.DropboxUnlinkedException;
 
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
+import java.io.PrintWriter;
 
-import de.adrianbartnik.noty.R;
-import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
-import de.adrianbartnik.noty.fragment.NoteFragment;
+public class UploadFile extends AsyncTask<String, Long, Boolean> {
 
-public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
-
-    private static final String TAG = DownloadFile.class.getName();
-
-    private FragmentActivity mFragmentActivity;
+    private static final String TAG = UploadFile.class.getName();
     private final ProgressDialog mDialog;
-    private DropboxAPI<?> mApi;
-    private String mFileContent;
-    private Entry mEntry;
-    private File mFile;
-    private NavigationDrawerFragment mNavigationDrawerFragment;
+    private FragmentActivity mFragmentActivity;
+    private DropboxAPI<?> mDBApi;
+    private DropboxAPI.Entry mEntry;
 
     private FileOutputStream mFos;
 
@@ -50,16 +39,14 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
     private Long mFileLen;
     private String mErrorMsg;
 
-    public DownloadFile(FragmentActivity activity, DropboxAPI<?> api, Entry entry, NavigationDrawerFragment fragment) {
-        // We set the context this way so we don't accidentally leak activities
-        mFragmentActivity = activity;
+    public UploadFile(FragmentActivity activity, DropboxAPI<?> api, DropboxAPI.Entry entry) {
 
-        mApi = api;
+        mFragmentActivity = activity;
+        mDBApi = api;
         mEntry = entry;
-        mNavigationDrawerFragment = fragment;
 
         mDialog = new ProgressDialog(activity);
-        mDialog.setMessage("Downloading File");
+        mDialog.setMessage("Uploading File");
         mDialog.setButton(ProgressDialog.BUTTON_POSITIVE, "Cancel", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
                 mCanceled = true;
@@ -80,31 +67,27 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
     }
 
     @Override
-    protected Boolean doInBackground(Void... params) {
+    protected Boolean doInBackground(String... params) {
         try {
             if (mCanceled) {
                 return false;
             }
 
-            String path = mEntry.path;
-            mFileLen = mEntry.bytes;
-
             String cachePath = mFragmentActivity.getCacheDir().getAbsolutePath() + "/" + mEntry.fileName();
+            File mFile = new File(cachePath);
 
-            mFile = new File(cachePath);
+            FileUtils.writeStringToFile(mFile, params[0], "UTF-8");
 
-            try {
-                mFos = new FileOutputStream(mFile);
+            mFileLen = mFile.length();
 
-            } catch (FileNotFoundException e) {
-                mErrorMsg = "Couldn't create a local file to store the image";
-                return false;
-            }
+            Log.d(TAG, "Uploading file: " + mEntry.fileName() + " to " + mEntry.parentPath());
 
-            DropboxAPI.DropboxFileInfo info = mApi.getFile(path, null, mFos, new ProgressListener() {
+            FileInputStream fis = new FileInputStream(mFile);
+
+            DropboxAPI.Entry newEntry = mDBApi.putFile(mEntry.path, fis, mFile.length(), mEntry.rev, new ProgressListener() {
                 @Override
-                public void onProgress(long bytes, long total) {
-                    publishProgress(bytes);
+                public void onProgress(long l, long l1) {
+                    publishProgress(l);
                 }
             });
 
@@ -112,23 +95,13 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
                 return false;
             }
 
-            InputStream reader = new FileInputStream(mFile);
-            StringWriter writer = new StringWriter();
-            IOUtils.copy(reader, writer, "UTF-8");
-            mFileContent = writer.toString();
+            Log.d(TAG, "Uploading file: Done");
 
-            reader.close();
-            writer.close();
-
-            Log.d(TAG, "Size: " + info.getFileSize() + " Content: " + mFileContent);
-
-            if (mCanceled) {
-                return false;
-            }
+            fis.close();
 
             return true;
 
-        } catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         } catch (DropboxUnlinkedException e) {
             // The AuthSession wasn't properly authenticated or user unlinked.
@@ -186,15 +159,12 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
     protected void onPostExecute(Boolean result) {
         mDialog.dismiss();
         if (result) {
-//            mNavigationDrawerFragment.setCurrentFile(mFile);
-            FragmentManager fragmentManager = mFragmentActivity.getSupportFragmentManager();
-            fragmentManager.beginTransaction()
-                    .replace(R.id.container, NoteFragment.newInstance(mEntry.fileName(), mFileContent))
-                    .commit();
+            Toast.makeText(mFragmentActivity, "UploadSuccessful", Toast.LENGTH_SHORT).show();
         } else {
             // Couldn't download it, so show an error
             Toast.makeText(mFragmentActivity, mErrorMsg, Toast.LENGTH_LONG).show();
         }
     }
 }
+
 

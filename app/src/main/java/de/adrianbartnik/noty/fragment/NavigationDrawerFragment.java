@@ -18,6 +18,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -31,6 +32,7 @@ import java.util.List;
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.adapter.NoteAdapter;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
+import de.adrianbartnik.noty.tasks.UploadFile;
 
 public class NavigationDrawerFragment extends Fragment {
 
@@ -45,6 +47,7 @@ public class NavigationDrawerFragment extends Fragment {
     private View mFragmentContainerView;
 
     private String mCurrentFolder = "/";
+    private Entry mCurrentEntry;
     private boolean mInSubfolder = false;
     private DropboxAPI<AndroidAuthSession> mDBApi;
 
@@ -149,9 +152,15 @@ public class NavigationDrawerFragment extends Fragment {
 
                 getActivity().supportInvalidateOptionsMenu(); // calls onPrepareOptionsMenu()
             }
+
+            @Override
+        public void onDrawerSlide(View drawerView, float slideOffset){
+                super.onDrawerSlide(drawerView, slideOffset);
+            }
         };
 
         mDrawerLayout.openDrawer(mFragmentContainerView);
+        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_OPEN);
 
         // Defer code dependent on restoration of previous instance state.
         mDrawerLayout.post(new Runnable() {
@@ -182,6 +191,8 @@ public class NavigationDrawerFragment extends Fragment {
                 new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder + entry.fileName() + "/");
 
             } else {
+                mCurrentEntry = entry;
+                mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
                 mDrawerLayout.closeDrawer(mFragmentContainerView);
                 mCallbacks.onNavigationDrawerItemSelected(entry);
             }
@@ -253,21 +264,20 @@ public class NavigationDrawerFragment extends Fragment {
                 return true;
 
             case R.id.action_sync:
-                new ShowFolderStructure(mDBApi, this);
+                new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder); // TODO Add check if file was modified
+
+                String content = ((EditText) getActivity().findViewById(R.id.note_content)).getText().toString();
+
+                new UploadFile(getActivity(), mDBApi, mCurrentEntry).execute(content);
                 Toast.makeText(getActivity(), "Klicked Sync", Toast.LENGTH_SHORT).show();
                 return true;
 
             case R.id.action_sign_out:
-                Toast.makeText(getActivity(), "Sign out", Toast.LENGTH_SHORT).show();
                 mCallbacks.onClickedSignOut();
                 return true;
         }
 
-        if (mDrawerToggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
+        return mDrawerToggle.onOptionsItemSelected(item) || super.onOptionsItemSelected(item);
     }
 
     private void showGlobalContextActionBar() {
