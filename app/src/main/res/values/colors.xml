@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--<item name="textColorPrimary" type="color"></item>-->
+    <item name="primary" type="color">#3F51B5</item>
+    <item name="primaryDark" type="color">#303F9F</item>
+    <item name="windowBackground" type="color">#F5F5F5</item>
+    <item name="navigationBar" type="color">#FAFAFA</item>
+    <item name="accent" type="color">#FF4081</item>
+    <item name="navigationDrawerBackground" type="color">#FFFFFF</item>
+
+    <item name="noteItem" type="color">#242424</item>
+
+</resources>

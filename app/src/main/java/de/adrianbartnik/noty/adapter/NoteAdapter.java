@@ -3,11 +3,13 @@ package de.adrianbartnik.noty.adapter;
 
 import android.content.Context;
 import android.graphics.Typeface;
+import android.media.Image;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.dropbox.client2.DropboxAPI;
@@ -80,19 +82,22 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
 
             viewHolder = new ViewHolder();
             viewHolder.title = (TextView) convertView.findViewById(R.id.note_title);
+            viewHolder.icon = (ImageView) convertView.findViewById(R.id.note_icon);
 
             convertView.setTag(viewHolder);
         } else {
             viewHolder = (ViewHolder) convertView.getTag();
         }
 
+
         if (entry.isDir) {
-            viewHolder.title.setTypeface(null, Typeface.ITALIC);
+            viewHolder.icon.setImageResource(R.drawable.folder);
         } else {
-            viewHolder.title.setTypeface(null, Typeface.NORMAL);
+            viewHolder.icon.setImageResource(R.drawable.note);
         }
 
         // TODO Change Font, etc. if new synchronized
+        //  viewHolder.title.setTypeface(null, Typeface.ITALIC); Typeface.NORMAL
 
         viewHolder.title.setText(entry.fileName());
 
@@ -101,5 +106,6 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
 
     public static class ViewHolder {
         TextView title;
+        ImageView icon;
     }
 }

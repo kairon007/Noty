@@ -3,6 +3,7 @@ Android App to keep track of Notes in Dropbox
 
 # Todo
 Add caching to UI to not have to get meta data for every folder again
+Button to create notes
 Push Content aside when drawer is open
 
 # Efficiency

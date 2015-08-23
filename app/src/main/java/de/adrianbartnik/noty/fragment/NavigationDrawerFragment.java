@@ -1,6 +1,9 @@
 package de.adrianbartnik.noty.fragment;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -18,15 +21,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import de.adrianbartnik.noty.R;
@@ -266,6 +274,7 @@ public class NavigationDrawerFragment extends Fragment {
             case R.id.action_sync:
                 new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder); // TODO Add check if file was modified
 
+                // TODO Check if there is an EditText meaning one file has already been openened
                 String content = ((EditText) getActivity().findViewById(R.id.note_content)).getText().toString();
 
                 new UploadFile(getActivity(), mDBApi, mCurrentEntry).execute(content);
@@ -275,10 +284,65 @@ public class NavigationDrawerFragment extends Fragment {
             case R.id.action_sign_out:
                 mCallbacks.onClickedSignOut();
                 return true;
+
+            case R.id.action_create_folder:
+                createNodeCreateDialog(getActivity(), false);
+                return true;
+
+            case R.id.action_create_note:
+                createNodeCreateDialog(getActivity(), true);
+                return true;
         }
 
         return mDrawerToggle.onOptionsItemSelected(item) || super.onOptionsItemSelected(item);
     }
+
+    private void createNodeCreateDialog(final Activity context, final boolean note){
+
+        context.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.MyAlertDialogStyle);
+                LayoutInflater inflater = context.getLayoutInflater();
+
+                View dialogView = inflater.inflate(R.layout.dialog_create_item, null);
+                builder.setView(dialogView);
+                final EditText noteNameEdit = (EditText) dialogView.findViewById(R.id.note_name);
+
+                SimpleDateFormat format = new SimpleDateFormat();
+                format.applyPattern("EEE, d MMM yyyy");
+                noteNameEdit.setHint(format.format(new Date()) + ".txt");
+
+                builder.setTitle("Enter " + (note ? "note" : "folder") + " title");
+
+                builder.setPositiveButton("Create", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+                        String noteName = noteNameEdit.getText().toString();
+
+                        if (noteName.equals(""))
+                            noteName = noteNameEdit.getHint().toString();
+
+                        Log.d(TAG, "Dialog: " + noteName);
+                    }
+                });
+
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                    }
+                });
+
+                builder.setCancelable(true);
+                AlertDialog dialog = builder.create();
+
+//                dialog.getButton(DialogInterface.BUTTON_POSITIVE).setTextColor(getResources().getColor(R.color.accent));
+//                dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setTextColor(getResources().getColor(R.color.accent));
+
+                dialog.show();
+            }
+        });
+    }
+
 
     private void showGlobalContextActionBar() {
         ActionBar actionBar = getActionBar();
