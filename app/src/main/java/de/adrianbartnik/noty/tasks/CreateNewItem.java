@@ -9,7 +9,6 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
-import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.ProgressListener;
 import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.exception.DropboxIOException;
@@ -18,112 +17,80 @@ import com.dropbox.client2.exception.DropboxPartialFileException;
 import com.dropbox.client2.exception.DropboxServerException;
 import com.dropbox.client2.exception.DropboxUnlinkedException;
 
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
 
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 import de.adrianbartnik.noty.fragment.NoteFragment;
 
-public class CreateNewItem extends AsyncTask<Void, Long, Boolean> {
+public class CreateNewItem extends AsyncTask<Boolean, Long, Boolean> {
 
-    private static final String TAG = DownloadFile.class.getName();
+    private static final String TAG = CreateNewItem.class.getName();
 
     private FragmentActivity mFragmentActivity;
-    private final ProgressDialog mDialog;
-    private DropboxAPI<?> mApi;
-    private String mFileContent;
-    private Entry mEntry;
-    private File mFile;
+    private DropboxAPI<?> mDBApi;
     private NavigationDrawerFragment mNavigationDrawerFragment;
+    private String mPath;
+    private String mName;
 
     private FileOutputStream mFos;
 
     private boolean mCanceled;
-    private Long mFileLen;
     private String mErrorMsg;
 
-    public CreateNewItem(FragmentActivity activity, DropboxAPI<?> api, Entry entry, NavigationDrawerFragment fragment) {
-        // We set the context this way so we don't accidentally leak activities
+    public CreateNewItem(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, String path, String name) {
+
         mFragmentActivity = activity;
 
-        mApi = api;
-        mEntry = entry;
+        mDBApi = api;
         mNavigationDrawerFragment = fragment;
-
-        mDialog = new ProgressDialog(activity);
-        mDialog.setMessage("Downloading File");
-        mDialog.setButton(ProgressDialog.BUTTON_POSITIVE, "Cancel", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int which) {
-                mCanceled = true;
-                mErrorMsg = "Canceled";
-
-                // This will cancel the getThumbnail operation by closing its stream
-                if (mFos != null) {
-                    try {
-                        mFos.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
-
-        mDialog.show();
+        mPath = path;
+        mName = name;
     }
 
+    // TODO Rename Parameter
     @Override
-    protected Boolean doInBackground(Void... params) {
+    protected Boolean doInBackground(Boolean... params) {
         try {
             if (mCanceled) {
                 return false;
             }
 
-            String path = mEntry.path;
-            mFileLen = mEntry.bytes;
+            Log.d(TAG, "Creating Node: " + mName + " to " + mPath + ". Textnote: " + params[0]);
 
-            String cachePath = mFragmentActivity.getCacheDir().getAbsolutePath() + "/" + mEntry.fileName();
+            // Folder. File otherwise
+            if(params[0]){
 
-            mFile = new File(cachePath);
+                String cachePath = mFragmentActivity.getCacheDir().getAbsolutePath() + "/" + mName;
+                File mFile = new File(cachePath);
 
-            try {
-                mFos = new FileOutputStream(mFile);
+                mFile.createNewFile();
 
-            } catch (FileNotFoundException e) {
-                mErrorMsg = "Couldn't create a local file to store the image";
-                return false;
-            }
+                Log.d(TAG, "Uploading file: " + mFile.getName() + " to " + mFile.getPath());
 
-            DropboxAPI.DropboxFileInfo info = mApi.getFile(path, null, mFos, new ProgressListener() {
-                @Override
-                public void onProgress(long bytes, long total) {
-                    publishProgress(bytes);
+                FileInputStream fis = new FileInputStream(mFile);
+
+                DropboxAPI.Entry newEntry = mDBApi.putFile(mPath + mName, fis, mFile.length(), null, new ProgressListener() {
+                    @Override
+                    public void onProgress(long l, long l1) {
+                        publishProgress(l);
+                    }
+                });
+
+                if (mCanceled) {
+                    return false;
                 }
-            });
 
-            if (mCanceled) {
-                return false;
-            }
+                Log.d(TAG, "Uploading file: Done");
 
-            InputStream reader = new FileInputStream(mFile);
-            StringWriter writer = new StringWriter();
-            IOUtils.copy(reader, writer, "UTF-8");
-            mFileContent = writer.toString();
-
-            reader.close();
-            writer.close();
-
-            Log.d(TAG, "Size: " + info.getFileSize() + " Content: " + mFileContent);
-
-            if (mCanceled) {
-                return false;
+                fis.close();
+            } else {
+                DropboxAPI.Entry newEntry = mDBApi.createFolder(mPath + mName);
             }
 
             return true;
@@ -177,20 +144,11 @@ public class CreateNewItem extends AsyncTask<Void, Long, Boolean> {
     }
 
     @Override
-    protected void onProgressUpdate(Long... progress) {
-        int percent = (int) (100.0 * (double) progress[0] / mFileLen + 0.5);
-        mDialog.setProgress(percent);
-    }
-
-    @Override
     protected void onPostExecute(Boolean result) {
-        mDialog.dismiss();
+
         if (result) {
-//            mNavigationDrawerFragment.setCurrentFile(mFile);
-            FragmentManager fragmentManager = mFragmentActivity.getSupportFragmentManager();
-            fragmentManager.beginTransaction()
-                    .replace(R.id.container, NoteFragment.newInstance(mEntry.fileName(), mFileContent))
-                    .commit();
+            (new ShowFolderStructure(mDBApi, mNavigationDrawerFragment)).execute(mPath);
+
         } else {
             // Couldn't download it, so show an error
             Toast.makeText(mFragmentActivity, mErrorMsg, Toast.LENGTH_LONG).show();

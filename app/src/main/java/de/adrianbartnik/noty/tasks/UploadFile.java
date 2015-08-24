@@ -66,6 +66,7 @@ public class UploadFile extends AsyncTask<String, Long, Boolean> {
         mDialog.show();
     }
 
+    // TODO Create Javadoc
     @Override
     protected Boolean doInBackground(String... params) {
         try {

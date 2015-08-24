@@ -5,6 +5,7 @@ Android App to keep track of Notes in Dropbox
 Add caching to UI to not have to get meta data for every folder again
 Button to create notes
 Push Content aside when drawer is open
+Delete Files
 
 # Efficiency
 Don't recursively troll the metadata to build your directory UI on startup. Instead, only get the directory the user is viewing, and do some caching so you don't have to ask constantly.

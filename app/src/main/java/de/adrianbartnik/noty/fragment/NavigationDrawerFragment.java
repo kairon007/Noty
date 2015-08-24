@@ -2,7 +2,6 @@ package de.adrianbartnik.noty.fragment;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -21,11 +20,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
@@ -39,6 +35,7 @@ import java.util.List;
 
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.adapter.NoteAdapter;
+import de.adrianbartnik.noty.tasks.CreateNewItem;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 import de.adrianbartnik.noty.tasks.UploadFile;
 
@@ -54,6 +51,7 @@ public class NavigationDrawerFragment extends Fragment {
     private ListView mDrawerListView;
     private View mFragmentContainerView;
 
+    private String mParentFolder = "/";
     private String mCurrentFolder = "/";
     private Entry mCurrentEntry;
     private boolean mInSubfolder = false;
@@ -68,6 +66,15 @@ public class NavigationDrawerFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 selectItem(position);
+            }
+        });
+        mDrawerListView.setLongClickable(true);
+        mDrawerListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> adapterView, View view, int position, long id) {
+                Toast.makeText(getActivity(), "Click on item at position: " + position, Toast.LENGTH_SHORT).show();
+
+                return false;
             }
         });
         NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<Entry>());
@@ -193,10 +200,11 @@ public class NavigationDrawerFragment extends Fragment {
             Log.d(TAG, "Subfolder: " + mInSubfolder  + " Entry: " + entry.fileName() + "Path: " + entry.path);
 
             if (entry.isDir) {
-                mCurrentFolder = entry.parentPath();
+                mParentFolder = entry.parentPath();
+                mCurrentFolder = entry.path + "/";
                 mInSubfolder = true;
                 getActivity().supportInvalidateOptionsMenu(); // calls onPrepareOptionsMenu()
-                new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder + entry.fileName() + "/");
+                new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder);
 
             } else {
                 mCurrentEntry = entry;
@@ -253,32 +261,31 @@ public class NavigationDrawerFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
-        Log.d(TAG, "OptionMenu klicked. Item: " + item.getItemId() + " SignoutID: " + R.id.action_sign_out);
-
         switch (item.getItemId()){
             case android.R.id.home:
                 if (!isDrawerOpen())
                     mDrawerLayout.openDrawer(mFragmentContainerView);
                 else {
-                    if(mCurrentFolder.lastIndexOf('/') == 0) {
+                    if(mParentFolder.lastIndexOf('/') == 0) {
+                        mParentFolder = "/";
                         mCurrentFolder = "/";
                         mInSubfolder = false;
                     }
-                    else
-                        mCurrentFolder = mCurrentFolder.substring(0, mCurrentFolder.lastIndexOf('/'));
-                    new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder);
+                    else{
+                        mCurrentFolder = mParentFolder;
+                        mParentFolder = mParentFolder.substring(0, mParentFolder.lastIndexOf('/'));
+                    }
+                    new ShowFolderStructure(mDBApi, this).execute(mParentFolder);
                 }
-                Toast.makeText(getActivity(), "Clicked up.", Toast.LENGTH_SHORT).show();
                 return true;
 
             case R.id.action_sync:
-                new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder); // TODO Add check if file was modified
+                new ShowFolderStructure(mDBApi, this).execute(mParentFolder); // TODO Add check if file was modified
 
                 // TODO Check if there is an EditText meaning one file has already been openened
                 String content = ((EditText) getActivity().findViewById(R.id.note_content)).getText().toString();
 
                 new UploadFile(getActivity(), mDBApi, mCurrentEntry).execute(content);
-                Toast.makeText(getActivity(), "Klicked Sync", Toast.LENGTH_SHORT).show();
                 return true;
 
             case R.id.action_sign_out:
@@ -323,7 +330,7 @@ public class NavigationDrawerFragment extends Fragment {
                         if (noteName.equals(""))
                             noteName = noteNameEdit.getHint().toString();
 
-                        Log.d(TAG, "Dialog: " + noteName);
+                        (new CreateNewItem(getActivity(), mDBApi, NavigationDrawerFragment.this, mCurrentFolder, noteName)).execute(note);
                     }
                 });
 
@@ -334,9 +341,6 @@ public class NavigationDrawerFragment extends Fragment {
 
                 builder.setCancelable(true);
                 AlertDialog dialog = builder.create();
-
-//                dialog.getButton(DialogInterface.BUTTON_POSITIVE).setTextColor(getResources().getColor(R.color.accent));
-//                dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setTextColor(getResources().getColor(R.color.accent));
 
                 dialog.show();
             }

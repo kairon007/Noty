@@ -44,7 +44,7 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
     @Override
     public long getItemId(int position) {
         if (position >= entries.size()) {
-            Log.d(TAG, "Error accesing element at position " + position + " while entries only holds " + entries.size() + " entries");
+//            Log.d(TAG, "Error accesing element at position " + position + " while entries only holds " + entries.size() + " entries");
             return position;
         }
         return entries.get(position).hashCode();
