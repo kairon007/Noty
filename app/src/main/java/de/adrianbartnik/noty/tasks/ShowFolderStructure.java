@@ -43,12 +43,6 @@ public class ShowFolderStructure extends AsyncTask<String, Void, DropboxAPI.Entr
         if (result == null)
             return;
 
-        for (DropboxAPI.Entry e : result.contents) {
-            if (!e.isDeleted) {
-//                Log.i("DropboxEntry", "DropboxEntry - " + String.valueOf(e.isDir) + " Itemname: " + e.fileName() + " ParentPath: " + e.parentPath() + " Path: " + e.path);
-            }
-        }
-
         mNavigationDrawerFragment.addEntries(result.contents);
     }
 

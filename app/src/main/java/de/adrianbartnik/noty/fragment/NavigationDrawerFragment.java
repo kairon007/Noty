@@ -36,6 +36,7 @@ import java.util.List;
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.adapter.NoteAdapter;
 import de.adrianbartnik.noty.tasks.CreateNewItem;
+import de.adrianbartnik.noty.tasks.DeleteNode;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 import de.adrianbartnik.noty.tasks.UploadFile;
 
@@ -72,9 +73,10 @@ public class NavigationDrawerFragment extends Fragment {
         mDrawerListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int position, long id) {
-                Toast.makeText(getActivity(), "Click on item at position: " + position, Toast.LENGTH_SHORT).show();
 
-                return false;
+                createDeleteDialog(getActivity(), position);
+
+                return true;
             }
         });
         NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<Entry>());
@@ -121,8 +123,11 @@ public class NavigationDrawerFragment extends Fragment {
             }
         }
 
-        for (Entry e : entries)
+        for (Entry e : entries){
+            if(e.isDeleted)
+                continue;
             ((NoteAdapter) mDrawerListView.getAdapter()).add(e);
+        }
 
         mDrawerListView.invalidateViews();
     }
@@ -347,6 +352,36 @@ public class NavigationDrawerFragment extends Fragment {
         });
     }
 
+    private void createDeleteDialog(final Activity context, final int position){
+
+        context.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(context);
+
+                builder.setTitle("Sure?");
+                builder.setMessage("Are you sure you want to delete that node?");
+
+                builder.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+
+                        Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
+
+                        (new DeleteNode(getActivity(), mDBApi, NavigationDrawerFragment.this, entry)).execute();
+                    }
+                });
+
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                    }
+                });
+
+                builder.setCancelable(true);
+                builder.create().show();
+            }
+        });
+    }
 
     private void showGlobalContextActionBar() {
         ActionBar actionBar = getActionBar();
