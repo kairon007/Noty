@@ -86,6 +86,7 @@ public class DropboxLogin extends Activity {
 
     private void startMain() {
         Intent main = new Intent(this, MainActivity.class);
+        main.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(main);
     }
 

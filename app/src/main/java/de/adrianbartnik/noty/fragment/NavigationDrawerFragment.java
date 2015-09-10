@@ -9,8 +9,10 @@ import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.view.ActionMode;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -22,7 +24,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
@@ -37,6 +38,7 @@ import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.adapter.NoteAdapter;
 import de.adrianbartnik.noty.tasks.CreateNewItem;
 import de.adrianbartnik.noty.tasks.DeleteNode;
+import de.adrianbartnik.noty.tasks.MoveNode;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 import de.adrianbartnik.noty.tasks.UploadFile;
 
@@ -57,6 +59,8 @@ public class NavigationDrawerFragment extends Fragment {
     private Entry mCurrentEntry;
     private boolean mInSubfolder = false;
     private DropboxAPI<AndroidAuthSession> mDBApi;
+    private ActionMode mActionMode;
+    private int cabPosition;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -74,8 +78,16 @@ public class NavigationDrawerFragment extends Fragment {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int position, long id) {
 
-                createDeleteDialog(getActivity(), position);
+//                createDeleteDialog(getActivity(), position);
 
+                if (mActionMode != null) {
+                    return false;
+                }
+
+                mActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(mActionModeCallback);
+
+                view.setSelected(true);
+                cabPosition = position;
                 return true;
             }
         });
@@ -352,23 +364,31 @@ public class NavigationDrawerFragment extends Fragment {
         });
     }
 
-    private void createDeleteDialog(final Activity context, final int position){
+    private void createMoveDialog(final Activity context, final Entry note){
 
         context.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.MyAlertDialogStyle);
+                LayoutInflater inflater = context.getLayoutInflater();
 
-                builder.setTitle("Sure?");
-                builder.setMessage("Are you sure you want to delete that node?");
+                View dialogView = inflater.inflate(R.layout.dialog_create_item, null);
+                builder.setView(dialogView);
+                final EditText noteNameEdit = (EditText) dialogView.findViewById(R.id.note_name);
 
-                builder.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                noteNameEdit.setHint(note.fileName());
+
+                builder.setTitle("Enter " + (note.isDir ? "note" : "folder") + " title");
+
+                builder.setPositiveButton("Create", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int id) {
+                        String noteName = noteNameEdit.getText().toString();
 
-                        Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
+                        if (noteName.equals(""))
+                            noteName = noteNameEdit.getHint().toString();
 
-                        (new DeleteNode(getActivity(), mDBApi, NavigationDrawerFragment.this, entry)).execute();
+                        (new MoveNode(getActivity(), mDBApi, NavigationDrawerFragment.this, note, noteName)).execute();
                     }
                 });
 
@@ -378,10 +398,65 @@ public class NavigationDrawerFragment extends Fragment {
                 });
 
                 builder.setCancelable(true);
-                builder.create().show();
+                AlertDialog dialog = builder.create();
+
+                dialog.show();
             }
         });
     }
+
+    private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
+
+        // Called when the action mode is created; startActionMode() was called
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            // Inflate a menu resource providing context menu items
+            MenuInflater inflater = mode.getMenuInflater();
+            inflater.inflate(R.menu.drawer_contextual, menu);
+            return true;
+        }
+
+        // Called each time the action mode is shown. Always called after onCreateActionMode, but
+        // may be called multiple times if the mode is invalidated.
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return false; // Return false if nothing is done
+        }
+
+        // Called when the user selects a contextual menu item
+        @Override
+        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+
+            Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(cabPosition);
+
+            Log.d(TAG, "Clicked node: " + entry.path);
+
+            switch (item.getItemId()) {
+                case R.id.action_drawer_cab_edit:
+
+                    createMoveDialog(getActivity(), entry);
+
+                    mode.finish();
+                    return true;
+
+                case R.id.action_drawer_cab_delete:
+
+                    (new DeleteNode(getActivity(), mDBApi, NavigationDrawerFragment.this, entry)).execute();
+
+                    mode.finish();
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        // Called when the user exits the action mode
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+            mActionMode = null;
+        }
+    };
 
     private void showGlobalContextActionBar() {
         ActionBar actionBar = getActionBar();

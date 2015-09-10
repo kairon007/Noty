@@ -13,4 +13,6 @@
 
     <string name="DropboxLoginMessage">This app requires a dropbox account</string>
     <string name="DropboxLoginButton">Login to Dropbox</string>
+    <string name="drawer_cab_edit_name">Change name</string>
+    <string name="drawer_cab_delete_node">Delete node</string>
 </resources>
