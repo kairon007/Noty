@@ -1,8 +1,10 @@
 package de.adrianbartnik.noty.tasks;
 
 import android.os.AsyncTask;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
@@ -13,6 +15,7 @@ import com.dropbox.client2.exception.DropboxPartialFileException;
 import com.dropbox.client2.exception.DropboxServerException;
 import com.dropbox.client2.exception.DropboxUnlinkedException;
 
+import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 
 public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
@@ -102,6 +105,17 @@ public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
 
         if (result) {
             (new ShowFolderStructure(mDBApi, mNavigationDrawerFragment)).execute(mEntry.parentPath());
+
+            final View coordinatorLayoutView = mNavigationDrawerFragment.getActivity().findViewById(R.id.coordinator);
+
+            Snackbar
+                    .make(coordinatorLayoutView, "Deleted " + mEntry.fileName(), Snackbar.LENGTH_INDEFINITE)
+                    .setAction("Undo", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View view) {
+                            Toast.makeText(mNavigationDrawerFragment.getActivity(), "Undo", Toast.LENGTH_LONG).show();
+                        }
+                    }).show();
 
         } else {
             // Couldn't download it, so show an error

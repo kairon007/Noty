@@ -14,12 +14,6 @@
         app:showAsAction="always"/>
 
     <item
-        android:id="@+id/action_create_note"
-        android:icon="@drawable/note_add"
-        android:title="@string/action_create_note"
-        app:showAsAction="always"/>
-
-    <item
         android:id="@+id/action_sign_out"
         android:icon="@drawable/logout"
         android:title="@string/action_sign_out"

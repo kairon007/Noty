@@ -110,16 +110,8 @@ public class NavigationDrawerFragment extends Fragment {
             @Override
             public void onClick(View view) {
 
-                final View coordinatorLayoutView = getActivity().findViewById(R.id.coordinator);
+                createNodeCreateDialog(getActivity(), true);
 
-                Snackbar
-                        .make(coordinatorLayoutView, "Deleted Node", Snackbar.LENGTH_LONG)
-                        .setAction("Undo", new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                Toast.makeText(getActivity(), "Undoing Delete", Toast.LENGTH_SHORT).show();
-                            }
-                        }).show();
             }
         });
     }
@@ -338,10 +330,6 @@ public class NavigationDrawerFragment extends Fragment {
 
             case R.id.action_create_folder:
                 createNodeCreateDialog(getActivity(), false);
-                return true;
-
-            case R.id.action_create_note:
-                createNodeCreateDialog(getActivity(), true);
                 return true;
         }
 
