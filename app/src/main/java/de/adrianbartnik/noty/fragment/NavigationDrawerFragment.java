@@ -5,11 +5,12 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
@@ -24,6 +25,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
@@ -53,6 +55,7 @@ public class NavigationDrawerFragment extends Fragment {
     private DrawerLayout mDrawerLayout;
     private ListView mDrawerListView;
     private View mFragmentContainerView;
+    private FloatingActionButton fab;
 
     private String mParentFolder = "/";
     private String mCurrentFolder = "/";
@@ -93,12 +96,32 @@ public class NavigationDrawerFragment extends Fragment {
         });
         NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<Entry>());
         mDrawerListView.setAdapter(noteAdapter);
+
+
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         setHasOptionsMenu(true);
+
+        fab = (FloatingActionButton) getActivity().findViewById(R.id.floating_action_button);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                final View coordinatorLayoutView = getActivity().findViewById(R.id.coordinator);
+
+                Snackbar
+                        .make(coordinatorLayoutView, "Deleted Node", Snackbar.LENGTH_LONG)
+                        .setAction("Undo", new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                Toast.makeText(getActivity(), "Undoing Delete", Toast.LENGTH_SHORT).show();
+                            }
+                        }).show();
+            }
+        });
     }
 
     @Override
@@ -167,6 +190,8 @@ public class NavigationDrawerFragment extends Fragment {
             public void onDrawerClosed(View drawerView) {
                 super.onDrawerClosed(drawerView);
                 getActionBar().setDisplayHomeAsUpEnabled(true);
+                fab.setVisibility(View.GONE);
+
                 if (!isAdded()) {
                     return;
                 }
@@ -178,6 +203,8 @@ public class NavigationDrawerFragment extends Fragment {
             public void onDrawerOpened(View drawerView) {
                 super.onDrawerOpened(drawerView);
                 getActionBar().setDisplayHomeAsUpEnabled(false);
+                fab.setVisibility(View.VISIBLE);
+
                 if (!isAdded()) {
                     return;
                 }

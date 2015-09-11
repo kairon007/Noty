@@ -1,22 +1,39 @@
-<android.support.v4.widget.DrawerLayout
-    android:id="@+id/drawer_layout"
+<android.support.design.widget.CoordinatorLayout
+    android:id="@+id/coordinator"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    android:layout_height="match_parent">
 
-    <FrameLayout
-        android:id="@+id/container"
+    <android.support.v4.widget.DrawerLayout
+        android:id="@+id/drawer_layout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
-
-    <fragment
-        android:id="@+id/navigation_drawer"
-        android:name="de.adrianbartnik.noty.fragment.NavigationDrawerFragment"
-        android:layout_width="@dimen/navigation_drawer_width"
         android:layout_height="match_parent"
-        android:layout_gravity="start"
-        tools:layout="@layout/fragment_navigation_drawer"/>
+        tools:context=".MainActivity">
 
-</android.support.v4.widget.DrawerLayout>
+        <FrameLayout
+            android:id="@+id/container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <fragment
+            android:id="@+id/navigation_drawer"
+            android:name="de.adrianbartnik.noty.fragment.NavigationDrawerFragment"
+            android:layout_width="@dimen/navigation_drawer_width"
+            android:layout_height="match_parent"
+            android:layout_gravity="start"
+            tools:layout="@layout/fragment_navigation_drawer"/>
+
+    </android.support.v4.widget.DrawerLayout>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/floating_action_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_gravity="bottom|right"
+        android:layout_marginBottom="@dimen/activity_vertical_margin"
+        android:layout_marginRight="@dimen/activity_horizontal_margin"
+        android:src="@drawable/delete"/>
+
+</android.support.design.widget.CoordinatorLayout>
