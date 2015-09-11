@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+
+<!--Used for the ListView in the navigation drawer-->
+<de.adrianbartnik.noty.layout.CheckableLinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"
@@ -8,13 +10,15 @@
     android:layout_marginRight="@dimen/note_horizontal_margin"
     android:layout_marginTop="@dimen/note_vertical_margin"
     android:orientation="horizontal"
-    android:padding="10dip">
+    android:padding="10dip"
+    android:background="@drawable/drawer_item_bg">
 
     <ImageView
         android:id="@+id/note_icon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/folder"/>
+        android:src="@drawable/folder"
+        android:duplicateParentState="true"/>
 
     <TextView
         android:id="@+id/note_title"
@@ -26,6 +30,7 @@
         android:singleLine="true"
         android:text="SampleText"
         android:textColor="@color/noteItem"
-        android:textSize="23sp"/>
+        android:textSize="23sp"
+        android:duplicateParentState="true"/>
 
-</LinearLayout>
+</de.adrianbartnik.noty.layout.CheckableLinearLayout>

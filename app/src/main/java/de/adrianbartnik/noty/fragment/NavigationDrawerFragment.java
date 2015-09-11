@@ -6,7 +6,6 @@ import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -15,6 +14,7 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
 import android.util.Log;
+import android.util.SparseBooleanArray;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -25,7 +25,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
@@ -63,40 +62,71 @@ public class NavigationDrawerFragment extends Fragment {
     private boolean mInSubfolder = false;
     private DropboxAPI<AndroidAuthSession> mDBApi;
     private ActionMode mActionMode;
-    private int cabPosition;
+
+    public boolean getItemChecked(long id){
+
+        long[] list = mDrawerListView.getCheckedItemIds();
+        for(long l : list)
+            if(l == id)
+                return true;
+
+        return false;
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         mDrawerListView = (ListView) getLayoutInflater(savedInstanceState).inflate(R.layout.fragment_navigation_drawer, null, false);
+        mDrawerListView.setLongClickable(true);
+        mDrawerListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+        mDrawerListView.setItemsCanFocus(false);
         mDrawerListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                selectItem(position);
+                if(mActionMode == null)
+                    selectItem(position);
+                else {
+
+                    int currentCheckItems = mDrawerListView.getCheckedItemIds().length;
+
+                    if(currentCheckItems == 0)
+                        mActionMode.finish();
+                    else if(currentCheckItems == 1 || currentCheckItems == 2)
+                        mActionMode.invalidate();
+                }
             }
         });
-        mDrawerListView.setLongClickable(true);
         mDrawerListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int position, long id) {
 
-//                createDeleteDialog(getActivity(), position);
+                int currentCheckItems = mDrawerListView.getCheckedItemIds().length;
 
-                if (mActionMode != null) {
-                    return false;
+                if(getItemChecked(id)){
+                    mDrawerListView.setItemChecked(position, false);
+
+                    // Finish CAB if no other node is selected
+                    if(currentCheckItems == 0)
+                        mActionMode.finish();
+
+                } else {
+                    // Only start CAB, if it is the first node on with a long click is performed
+                    if(currentCheckItems == 0)
+                        mActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(mActionModeCallback);
+
+                    mDrawerListView.setItemChecked(position, true);
                 }
 
-                mActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(mActionModeCallback);
+                // Refresh menu to display edit_name action item if necessary. Only check for transitions between one and two selected items
+                if(currentCheckItems == 1 || currentCheckItems == 2)
+                    mActionMode.invalidate();
 
-                view.setSelected(true);
-                cabPosition = position;
                 return true;
             }
         });
         NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<Entry>());
         mDrawerListView.setAdapter(noteAdapter);
-
 
     }
 
@@ -422,32 +452,39 @@ public class NavigationDrawerFragment extends Fragment {
 
     private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
 
-        // Called when the action mode is created; startActionMode() was called
         @Override
         public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-            // Inflate a menu resource providing context menu items
             MenuInflater inflater = mode.getMenuInflater();
             inflater.inflate(R.menu.drawer_contextual, menu);
             return true;
         }
 
-        // Called each time the action mode is shown. Always called after onCreateActionMode, but
-        // may be called multiple times if the mode is invalidated.
+        // Called each time the action mode is shown.
+        // Always called after onCreateActionMode, but may be called multiple times if the mode is invalidated.
         @Override
         public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-            return false; // Return false if nothing is done
+            Log.d(TAG, "onPrepareActionMode");
+
+            MenuItem item = menu.findItem(R.id.action_drawer_cab_edit);
+
+            if (mDrawerListView.getCheckedItemIds().length == 1){
+                item.setVisible(true);
+                return true;
+            } else {
+                item.setVisible(false);
+                return true;
+            }
         }
 
-        // Called when the user selects a contextual menu item
         @Override
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
 
-            Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(cabPosition);
-
-            Log.d(TAG, "Clicked node: " + entry.path);
+            long[] ids = mDrawerListView.getCheckedItemIds();
 
             switch (item.getItemId()) {
                 case R.id.action_drawer_cab_edit:
+
+                    Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItemById(ids[0]);
 
                     createMoveDialog(getActivity(), entry);
 
@@ -456,7 +493,11 @@ public class NavigationDrawerFragment extends Fragment {
 
                 case R.id.action_drawer_cab_delete:
 
-                    (new DeleteNode(getActivity(), mDBApi, NavigationDrawerFragment.this, entry)).execute();
+                    ArrayList<Entry> entries = new ArrayList<>(ids.length);
+                    for(long id : ids)
+                        entries.add(((NoteAdapter) mDrawerListView.getAdapter()).getItemById(id));
+
+                    (new DeleteNode(getActivity(), mDBApi, NavigationDrawerFragment.this, entries.get(0))).execute();
 
                     mode.finish();
                     return true;
@@ -466,10 +507,14 @@ public class NavigationDrawerFragment extends Fragment {
             }
         }
 
-        // Called when the user exits the action mode
         @Override
         public void onDestroyActionMode(ActionMode mode) {
+
+            for (int i = 0; i < mDrawerListView.getAdapter().getCount(); i++)
+                mDrawerListView.setItemChecked(i, false);
+
             mActionMode = null;
+
         }
     };
 

@@ -50,6 +50,14 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
         return entries.get(position).hashCode();
     }
 
+    public DropboxAPI.Entry getItemById(long id){
+        for(DropboxAPI.Entry entry : entries)
+            if(entry.hashCode() == id)
+                return entry;
+
+        return null;
+    }
+
     @Override
     public void clear() {
         entries.clear();
