@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 
-public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
+public class UndoDeleteNode extends AsyncTask<Void, Long, Boolean> {
 
     private static final String TAG = DeleteNode.class.getName();
 
@@ -32,9 +32,7 @@ public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
 
     private String mErrorMsg;
 
-    public DeleteNode(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, ArrayList<DropboxAPI.Entry> entries) {
-
-        // TODO Check if deleted file was a folder
+    public UndoDeleteNode(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, ArrayList<DropboxAPI.Entry> entries) {
 
         mFragmentActivity = activity;
         mDBApi = api;
@@ -49,9 +47,9 @@ public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
 
             // Or use different AsyncTasks?
             for(DropboxAPI.Entry entry : mEntries){
-                Log.d(TAG, "Deleting Node: " + entry.fileName() + " from " + entry.parentPath() + ". Textnote: " + entry.isDir);
-                mDBApi.delete(entry.path);
-                Log.d(TAG, "Deleting file " + entry.path + " - Done");
+                Log.d(TAG, "Restoring Node: " + entry.fileName() + " from " + entry.parentPath() + ". Textnote: " + entry.isDir);
+                mDBApi.restore(entry.path, entry.rev);
+                Log.d(TAG, "Restored file " + entry.path + " - Done");
             }
 
             return true;
@@ -110,19 +108,13 @@ public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
 
             final View coordinatorLayoutView = mNavigationDrawerFragment.getActivity().findViewById(R.id.coordinator);
 
-            String message = "Deleted ";
+            String message = "Restored ";
             if(mEntries.size() == 1)
                 message += mEntries.get(0).fileName();
             else
                 message += mEntries.size() + " files";
 
-            Snackbar.make(coordinatorLayoutView, message, Snackbar.LENGTH_LONG)
-                    .setAction("Undo", new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            (new UndoDeleteNode(mFragmentActivity ,mDBApi, mNavigationDrawerFragment, mEntries)).execute();
-                        }
-                    }).show();
+            Snackbar.make(coordinatorLayoutView, message, Snackbar.LENGTH_LONG).show();
 
         } else {
             // Couldn't download it, so show an error

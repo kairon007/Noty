@@ -14,7 +14,6 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
 import android.util.Log;
-import android.util.SparseBooleanArray;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -58,19 +57,15 @@ public class NavigationDrawerFragment extends Fragment {
 
     private String mParentFolder = "/";
     private String mCurrentFolder = "/";
-    private Entry mCurrentEntry;
     private boolean mInSubfolder = false;
     private DropboxAPI<AndroidAuthSession> mDBApi;
     private ActionMode mActionMode;
+    private boolean mNodeDirty = false;
 
-    public boolean getItemChecked(long id){
+    public Entry mCurrentEntry;
 
-        long[] list = mDrawerListView.getCheckedItemIds();
-        for(long l : list)
-            if(l == id)
-                return true;
-
-        return false;
+    public void invalidateNote(){
+        mNodeDirty = true;
     }
 
     @Override
@@ -79,17 +74,17 @@ public class NavigationDrawerFragment extends Fragment {
 
         mDrawerListView = (ListView) getLayoutInflater(savedInstanceState).inflate(R.layout.fragment_navigation_drawer, null, false);
         mDrawerListView.setLongClickable(true);
-        mDrawerListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
         mDrawerListView.setItemsCanFocus(false);
         mDrawerListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if(mActionMode == null)
+                if(mActionMode == null){
                     selectItem(position);
-                else {
+                } else {
 
                     int currentCheckItems = mDrawerListView.getCheckedItemIds().length;
 
+                    // Refresh menu to display edit_name action item if necessary. Only check for transitions between one and two selected items
                     if(currentCheckItems == 0)
                         mActionMode.finish();
                     else if(currentCheckItems == 1 || currentCheckItems == 2)
@@ -101,26 +96,15 @@ public class NavigationDrawerFragment extends Fragment {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int position, long id) {
 
-                int currentCheckItems = mDrawerListView.getCheckedItemIds().length;
+                mDrawerListView.clearChoices();
+                mDrawerListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 
-                if(getItemChecked(id)){
-                    mDrawerListView.setItemChecked(position, false);
-
-                    // Finish CAB if no other node is selected
-                    if(currentCheckItems == 0)
-                        mActionMode.finish();
-
-                } else {
-                    // Only start CAB, if it is the first node on with a long click is performed
-                    if(currentCheckItems == 0)
-                        mActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(mActionModeCallback);
-
+                if(mActionMode == null){
+                    mActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(mActionModeCallback);
                     mDrawerListView.setItemChecked(position, true);
+                } else {
+                    mActionMode.finish();
                 }
-
-                // Refresh menu to display edit_name action item if necessary. Only check for transitions between one and two selected items
-                if(currentCheckItems == 1 || currentCheckItems == 2)
-                    mActionMode.invalidate();
 
                 return true;
             }
@@ -273,10 +257,23 @@ public class NavigationDrawerFragment extends Fragment {
                 new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder);
 
             } else {
-                mCurrentEntry = entry;
+
+                // Current node is dirty?
+
                 mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
                 mDrawerLayout.closeDrawer(mFragmentContainerView);
-                mCallbacks.onNavigationDrawerItemSelected(entry);
+
+                // Return if selected node is the current open one
+                if(mCurrentEntry != entry){
+
+                    uploadCurrentFile();
+
+                    mNodeDirty = false;
+
+                    mCurrentEntry = entry;
+
+                    mCallbacks.onNavigationDrawerItemSelected(entry);
+                }
             }
         }
     }
@@ -324,6 +321,24 @@ public class NavigationDrawerFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
     }
 
+    public void uploadCurrentFile(){
+
+        // Checks if node has been modified. If not, uploading new version is unnecessary
+        if(!mNodeDirty)
+            return;
+
+        Log.d(TAG, "Note was modified. Upload new version");
+
+        EditText editText = ((EditText) getActivity().findViewById(R.id.note_content));
+
+        String content = "";
+
+        if(editText != null)
+            content = editText.getText().toString();
+
+        new UploadFile(getActivity(), mDBApi, mCurrentEntry).execute(content);
+    }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
@@ -346,12 +361,10 @@ public class NavigationDrawerFragment extends Fragment {
                 return true;
 
             case R.id.action_sync:
-                new ShowFolderStructure(mDBApi, this).execute(mParentFolder); // TODO Add check if file was modified
+                new ShowFolderStructure(mDBApi, this).execute(mParentFolder);
 
-                // TODO Check if there is an EditText meaning one file has already been openened
-                String content = ((EditText) getActivity().findViewById(R.id.note_content)).getText().toString();
+                uploadCurrentFile();
 
-                new UploadFile(getActivity(), mDBApi, mCurrentEntry).execute(content);
                 return true;
 
             case R.id.action_sign_out:
@@ -450,6 +463,50 @@ public class NavigationDrawerFragment extends Fragment {
         });
     }
 
+    private void createConfirmDeleteDialog(final Activity context){
+
+        context.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.MyAlertDialogStyle);
+
+                builder.setTitle("Are you sure?");
+
+                final long[] ids = mDrawerListView.getCheckedItemIds();
+
+                String message = "Delete ";
+                if(ids.length == 1)
+                    message += ((NoteAdapter) mDrawerListView.getAdapter()).getItemById(ids[0]).fileName();
+                else
+                    message += ids.length + " files";
+
+                builder.setMessage(message);
+
+                builder.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+
+                        ArrayList<Entry> entries = new ArrayList<>(ids.length);
+                        for(long entryID : ids)
+                            entries.add(((NoteAdapter) mDrawerListView.getAdapter()).getItemById(entryID));
+
+                        (new DeleteNode(getActivity(), mDBApi, NavigationDrawerFragment.this, entries)).execute();
+                    }
+                });
+
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                    }
+                });
+
+                builder.setCancelable(true);
+                AlertDialog dialog = builder.create();
+
+                dialog.show();
+            }
+        });
+    }
+
     private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
 
         @Override
@@ -493,11 +550,7 @@ public class NavigationDrawerFragment extends Fragment {
 
                 case R.id.action_drawer_cab_delete:
 
-                    ArrayList<Entry> entries = new ArrayList<>(ids.length);
-                    for(long id : ids)
-                        entries.add(((NoteAdapter) mDrawerListView.getAdapter()).getItemById(id));
-
-                    (new DeleteNode(getActivity(), mDBApi, NavigationDrawerFragment.this, entries.get(0))).execute();
+                    createConfirmDeleteDialog(getActivity());
 
                     mode.finish();
                     return true;
@@ -512,6 +565,8 @@ public class NavigationDrawerFragment extends Fragment {
 
             for (int i = 0; i < mDrawerListView.getAdapter().getCount(); i++)
                 mDrawerListView.setItemChecked(i, false);
+
+            mDrawerListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 
             mActionMode = null;
 

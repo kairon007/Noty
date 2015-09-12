@@ -3,16 +3,12 @@ package de.adrianbartnik.noty.activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
@@ -22,10 +18,11 @@ import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.application.MyApplication;
 import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
+import de.adrianbartnik.noty.fragment.NoteFragment;
 import de.adrianbartnik.noty.tasks.DownloadFile;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 
-public class MainActivity extends AppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
+public class MainActivity extends AppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks, NoteFragment.NoteFragmentCallbacks {
 
     private static final String TAG = MainActivity.class.getName();
 
@@ -55,6 +52,8 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     @Override
     protected void onStop() {
         super.onStop();
+
+        mNavigationDrawerFragment.uploadCurrentFile();
 
         if (mDBApi.getSession().authenticationSuccessful()) {
             try {
@@ -125,6 +124,11 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
         SharedPreferences prefs = getSharedPreferences(Constants.ACCOUNT_PREFS_NAME, 0);
         SharedPreferences.Editor edit = prefs.edit();
         edit.clear();
-        edit.commit();
+        edit.apply();
+    }
+
+    @Override
+    public void noteModified() {
+        mNavigationDrawerFragment.invalidateNote();
     }
 }

@@ -120,7 +120,7 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
             reader.close();
             writer.close();
 
-            Log.d(TAG, "Size: " + info.getFileSize() + " Content: " + mFileContent);
+            Log.d(TAG, "Size: " + info.getFileSize());
 
             if (mCanceled) {
                 return false;

@@ -20,8 +20,6 @@ import de.adrianbartnik.noty.R;
 
 public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
 
-    private static final String TAG = NoteAdapter.class.getName();
-
     private Context context;
     private ArrayList<DropboxAPI.Entry> entries;
 
