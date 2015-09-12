@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
@@ -238,6 +239,11 @@ public class NavigationDrawerFragment extends Fragment {
         mDrawerLayout.setDrawerListener(mDrawerToggle);
     }
 
+    public void openNavigationDrawer(){
+        if(!isDrawerOpen())
+            mDrawerLayout.openDrawer(mFragmentContainerView);
+    }
+
     private void selectItem(int position) {
 
         if (position < 0)
@@ -427,7 +433,14 @@ public class NavigationDrawerFragment extends Fragment {
         context.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.MyAlertDialogStyle);
+
+                AlertDialog.Builder builder;
+                if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB){
+                    builder = new AlertDialog.Builder(context, R.style.MyAlertDialogStyle);
+                } else{
+                    builder = new AlertDialog.Builder(context);
+                }
+
                 LayoutInflater inflater = context.getLayoutInflater();
 
                 View dialogView = inflater.inflate(R.layout.dialog_create_item, null);

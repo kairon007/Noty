@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.io.StringWriter;
 
 import de.adrianbartnik.noty.R;
+import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 import de.adrianbartnik.noty.fragment.NoteFragment;
 
@@ -186,7 +187,6 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
     protected void onPostExecute(Boolean result) {
         mDialog.dismiss();
         if (result) {
-//            mNavigationDrawerFragment.setCurrentFile(mFile);
             FragmentManager fragmentManager = mFragmentActivity.getSupportFragmentManager();
             fragmentManager.beginTransaction()
                     .replace(R.id.container, NoteFragment.newInstance(mEntry.fileName(), mFileContent))

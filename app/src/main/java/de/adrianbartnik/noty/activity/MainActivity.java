@@ -128,6 +128,14 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     }
 
     @Override
+    public void onBackPressed() {
+        if(mNavigationDrawerFragment.isDrawerOpen())
+            finish();
+        else
+            mNavigationDrawerFragment.openNavigationDrawer();
+    }
+
+    @Override
     public void noteModified() {
         mNavigationDrawerFragment.invalidateNote();
     }
