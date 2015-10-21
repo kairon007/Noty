@@ -34,7 +34,7 @@ public class MyApplication extends Application {
         mDBApi = api;
     }
 
-    public DropboxAPI<AndroidAuthSession> getAndroidAPI(){
+    public DropboxAPI<AndroidAuthSession> getDropboxAPI(){
         return mDBApi;
     }
 }

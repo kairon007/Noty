@@ -36,7 +36,9 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mDBApi = ((MyApplication) getApplication()).getAndroidAPI();
+        Log.d(TAG, "onCreate");
+
+        mDBApi = ((MyApplication) getApplication()).getDropboxAPI();
 
         setContentView(R.layout.activity_main);
         mTitle = getTitle();
@@ -44,7 +46,6 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
         // Set up the drawer.
         mNavigationDrawerFragment = (NavigationDrawerFragment) getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
         mNavigationDrawerFragment.setUp(R.id.navigation_drawer, (DrawerLayout) findViewById(R.id.drawer_layout));
-        mNavigationDrawerFragment.setmDBApi(mDBApi);
 
         new ShowFolderStructure(mDBApi, mNavigationDrawerFragment).execute("/");
     }

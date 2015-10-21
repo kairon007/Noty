@@ -2,6 +2,7 @@ package de.adrianbartnik.noty.fragment;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.os.Build;
@@ -30,13 +31,22 @@ import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.adapter.NoteAdapter;
+import de.adrianbartnik.noty.application.MyApplication;
+import de.adrianbartnik.noty.tasks.CreateFile;
 import de.adrianbartnik.noty.tasks.CreateNewItem;
 import de.adrianbartnik.noty.tasks.DeleteNode;
 import de.adrianbartnik.noty.tasks.MoveNode;
@@ -50,6 +60,17 @@ public class NavigationDrawerFragment extends Fragment {
     private NavigationDrawerCallbacks mCallbacks;
 
     private ActionBarDrawerToggle mDrawerToggle;
+
+    /**
+     * Used for temporary files on the internal storage
+     */
+    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966b";
+
+    /**
+     * Stores the hashes of all files to check if a new version is available
+     */
+    private HashMap<String, String> mFileVersions;
+    private HashMap<String, String> mFolderVersions;
 
     private DrawerLayout mDrawerLayout;
     private ListView mDrawerListView;
@@ -73,22 +94,24 @@ public class NavigationDrawerFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mDBApi = ((MyApplication) getActivity().getApplication()).getDropboxAPI();
+
         mDrawerListView = (ListView) getLayoutInflater(savedInstanceState).inflate(R.layout.fragment_navigation_drawer, null, false);
         mDrawerListView.setLongClickable(true);
         mDrawerListView.setItemsCanFocus(false);
         mDrawerListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if(mActionMode == null){
+                if (mActionMode == null) {
                     selectItem(position);
                 } else {
 
                     int currentCheckItems = mDrawerListView.getCheckedItemIds().length;
 
                     // Refresh menu to display edit_name action item if necessary. Only check for transitions between one and two selected items
-                    if(currentCheckItems == 0)
+                    if (currentCheckItems == 0)
                         mActionMode.finish();
-                    else if(currentCheckItems == 1 || currentCheckItems == 2)
+                    else if (currentCheckItems == 1 || currentCheckItems == 2)
                         mActionMode.invalidate();
                 }
             }
@@ -100,7 +123,7 @@ public class NavigationDrawerFragment extends Fragment {
                 mDrawerListView.clearChoices();
                 mDrawerListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 
-                if(mActionMode == null){
+                if (mActionMode == null) {
                     mActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(mActionModeCallback);
                     mDrawerListView.setItemChecked(position, true);
                 } else {
@@ -113,7 +136,52 @@ public class NavigationDrawerFragment extends Fragment {
         NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<Entry>());
         mDrawerListView.setAdapter(noteAdapter);
 
+        readVersions();
     }
+
+    private void readVersions() {
+        Log.d(TAG, "Loading Hashmaps for files and folders");
+        try {
+            ObjectInputStream inputStream = new ObjectInputStream(getActivity().openFileInput(RandomValue + "Files"));
+            Object object = inputStream.readObject();
+            mFileVersions = (HashMap<String, String>) object;
+            inputStream.close();
+            inputStream = new ObjectInputStream(getActivity().openFileInput(RandomValue + "Folder"));
+            mFolderVersions = (HashMap<String, String>) inputStream.readObject();
+            inputStream.close();
+        } catch (ClassNotFoundException exception){
+            exception.printStackTrace();
+        } catch (FileNotFoundException exception){
+            Log.d(TAG, "Not found. Creating new Hashmaps for files and folders");
+        } catch (IOException exception){
+            exception.printStackTrace();
+        }
+
+        if(mFileVersions == null)
+            mFileVersions = new HashMap<>();
+        if(mFolderVersions == null)
+            mFolderVersions = new HashMap<>();
+    }
+
+    private void writeVersions() {
+        Log.d(TAG, "Writing Hashmaps for files and folders");
+        try {
+            ObjectOutputStream outputStream = new ObjectOutputStream(getActivity().openFileOutput(RandomValue + "Files", Context.MODE_PRIVATE));
+            outputStream.writeObject(mFileVersions);
+            outputStream.close();
+            outputStream = new ObjectOutputStream(getActivity().openFileOutput(RandomValue + "Folder", Context.MODE_PRIVATE));
+            outputStream.writeObject(mFolderVersions);
+            outputStream.flush();
+            outputStream.close();
+        } catch (FileNotFoundException exception){
+            Log.d(TAG, "Not found. Writing new Hashmaps for files and folders");
+            mFileVersions = new HashMap<>();
+            mFolderVersions = new HashMap<>();
+        } catch (IOException exception){
+            exception.printStackTrace();
+        }
+    }
+
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
@@ -140,7 +208,55 @@ public class NavigationDrawerFragment extends Fragment {
         return mDrawerLayout != null && mDrawerLayout.isDrawerOpen(mFragmentContainerView);
     }
 
+    private void createFolderInStorage(Entry entry){
+
+        File mydir = getActivity().getDir("mydir", Context.MODE_PRIVATE); //Creating an internal dir;
+//        File fileWithinMyDir = new File(mydir, "myfile"); //Getting a file within the dir.
+        String hash = (entry.hash == null ? "" : entry.hash);
+        Log.d(TAG, "Creating directory: " + entry.path + " with hash " + hash);
+        mFolderVersions.put(entry.path, hash);
+    }
+
+    private void saveEntriesToStorage(List<Entry> entries){
+
+        Log.d(TAG, "mFolderVersions: " + mFolderVersions);
+        Log.d(TAG, "mFileVersions: " + mFileVersions);
+
+        for(Entry entry : entries){
+
+            Log.d(TAG, "Entry: " + entry.path + " isDir: " + entry.isDir);
+
+            if(entry.isDir){
+                if(mFolderVersions.containsKey(entry.path)){
+                    if(mFolderVersions.get(entry.path).equals(entry.hash)){
+                        Log.d(TAG, "Folder " + entry.fileName() + " exist and is up to date");
+                    } else {
+                        Log.d(TAG, "Folder " + entry.fileName() + " exist but is NOT up to date");
+                    }
+                } else {
+                    Log.d(TAG, "Folder " + entry.fileName() + " does not exist");
+
+                    createFolderInStorage(entry);
+                }
+            } else {
+                if(mFileVersions.containsKey(entry.path)){
+                    if(mFileVersions.get(entry.path).equals(entry.rev)){
+                        Log.d(TAG, "File " + entry.path + " exist and is up to date");
+                    } else {
+                        Log.d(TAG, "File " + entry.path + " exist but is NOT up to date");
+                    }
+                } else {
+                    Log.d(TAG, "File " + entry.path + " does not exist");
+
+                    new CreateFile(getActivity(), mDBApi, entry, mFileVersions).execute();
+                }
+            }
+        }
+    }
+
     public void addEntries(List<Entry> entries) {
+
+        saveEntriesToStorage(entries);
 
         if(!mInSubfolder){
             getActionBar().setHomeButtonEnabled(false);
@@ -488,7 +604,7 @@ public class NavigationDrawerFragment extends Fragment {
                 final long[] ids = mDrawerListView.getCheckedItemIds();
 
                 String message = "Delete ";
-                if(ids.length == 1)
+                if (ids.length == 1)
                     message += ((NoteAdapter) mDrawerListView.getAdapter()).getItemById(ids[0]).fileName();
                 else
                     message += ids.length + " files";
@@ -500,7 +616,7 @@ public class NavigationDrawerFragment extends Fragment {
                     public void onClick(DialogInterface dialog, int id) {
 
                         ArrayList<Entry> entries = new ArrayList<>(ids.length);
-                        for(long entryID : ids)
+                        for (long entryID : ids)
                             entries.add(((NoteAdapter) mDrawerListView.getAdapter()).getItemById(entryID));
 
                         (new DeleteNode(getActivity(), mDBApi, NavigationDrawerFragment.this, entries)).execute();
@@ -586,6 +702,13 @@ public class NavigationDrawerFragment extends Fragment {
         }
     };
 
+    @Override
+    public void onDestroy (){
+        Log.d(TAG, "onDestroy");
+        writeVersions();
+        super.onDestroy();
+    }
+
     private void showGlobalContextActionBar() {
         ActionBar actionBar = getActionBar();
         actionBar.setTitle(R.string.app_name);
@@ -593,10 +716,6 @@ public class NavigationDrawerFragment extends Fragment {
 
     private ActionBar getActionBar() {
         return ((AppCompatActivity) getActivity()).getSupportActionBar();
-    }
-
-    public void setmDBApi(DropboxAPI<AndroidAuthSession> mDBApi) {
-        this.mDBApi = mDBApi;
     }
 
     public interface NavigationDrawerCallbacks {

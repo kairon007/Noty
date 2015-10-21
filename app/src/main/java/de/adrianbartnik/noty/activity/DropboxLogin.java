@@ -35,7 +35,7 @@ public class DropboxLogin extends Activity {
         AppKeyPair appKeys = new AppKeyPair(DropboxCredentials.APP_KEY, DropboxCredentials.APP_SECRET);
         session = new AndroidAuthSession(appKeys);
         myApp.setDropboxAPI(new DropboxAPI<>(session));
-        mDBApi = myApp.getAndroidAPI();
+        mDBApi = myApp.getDropboxAPI();
 
         if (loadAuth(session)){
             Log.d(TAG, "User already logged in. Starting MainActivity");

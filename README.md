@@ -8,6 +8,7 @@ Change Behaviour of Back-Button
 Add transitions
 Colapse ActionBar in Container to view more of note
 Consistent naming (Note, Node)
+Abstract fragments via Interfaces
 
 # Efficiency
 Don't recursively troll the metadata to build your directory UI on startup. Instead, only get the directory the user is viewing, and do some caching so you don't have to ask constantly.
