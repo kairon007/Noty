@@ -3,6 +3,7 @@ package de.adrianbartnik.noty.activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -14,12 +15,20 @@ import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
 
+import org.apache.commons.io.IOUtils;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
+
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.application.MyApplication;
 import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 import de.adrianbartnik.noty.fragment.NoteFragment;
-import de.adrianbartnik.noty.tasks.DownloadFile;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 
 public class MainActivity extends AppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks, NoteFragment.NoteFragmentCallbacks {
@@ -69,8 +78,24 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
 
     @Override
     public void onNavigationDrawerItemSelected(Entry entry) {
-        DownloadFile task = new DownloadFile(this, mDBApi, entry, mNavigationDrawerFragment);
-        task.execute();
+
+        Log.d(TAG, "Opening Node: " + getFilesDir() + entry.path);
+
+        try {
+            InputStream reader = new FileInputStream(new File(getFilesDir() + entry.path));
+            StringWriter writer = new StringWriter();
+            IOUtils.copy(reader, writer, "UTF-8");
+
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            fragmentManager.beginTransaction()
+                    .replace(R.id.container, NoteFragment.newInstance(entry.fileName(), writer.toString()))
+                    .commit();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException exception) {
+            exception.printStackTrace();
+        }
     }
 
     @Override
