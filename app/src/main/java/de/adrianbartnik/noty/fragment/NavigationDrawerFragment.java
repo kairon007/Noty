@@ -44,12 +44,13 @@ import java.util.List;
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.adapter.NoteAdapter;
 import de.adrianbartnik.noty.application.MyApplication;
-import de.adrianbartnik.noty.tasks.DownloadFile;
 import de.adrianbartnik.noty.tasks.CreateNewItem;
 import de.adrianbartnik.noty.tasks.DeleteNode;
+import de.adrianbartnik.noty.tasks.DownloadFile;
 import de.adrianbartnik.noty.tasks.MoveNode;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
 import de.adrianbartnik.noty.tasks.UploadFile;
+import de.adrianbartnik.noty.util.SerializableEntry;
 
 public class NavigationDrawerFragment extends Fragment {
 
@@ -57,15 +58,14 @@ public class NavigationDrawerFragment extends Fragment {
     /**
      * Used for temporary files on the internal storage
      */
-    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966b";
+    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966f";
     public Entry mCurrentEntry;
     private NavigationDrawerCallbacks mCallbacks;
     private ActionBarDrawerToggle mDrawerToggle;
     /**
      * Stores the hashes of all files to check if a new version is available
      */
-    private HashMap<String, String> mFileVersions;
-    private HashMap<String, String> mFolderVersions;
+    private HashMap<String, HashMap<SerializableEntry, String>> mVersions;
     private DrawerLayout mDrawerLayout;
     private ListView mDrawerListView;
     private View mFragmentContainerView;
@@ -193,17 +193,39 @@ public class NavigationDrawerFragment extends Fragment {
         mDrawerListView.setAdapter(noteAdapter);
 
         readVersions();
+        showLocalFiles();
+    }
+
+    private void showLocalFiles() {
+
+        ArrayList<SerializableEntry> directory = new ArrayList<>(mVersions.get(mCurrentFolder).keySet());
+
+        int size = directory.size();
+        Entry entry;
+
+        // First show folders and then files.
+        // First add all folders, remove them from entries and then add remaining files
+        for (int i = 0; i < size; i++) {
+            entry = directory.get(i);
+            if (entry.isDir) {
+                ((NoteAdapter) mDrawerListView.getAdapter()).add(entry);
+                directory.remove(i);
+                i -= 1;
+                size -= 1;
+            }
+        }
+
+        for (Entry e : directory)
+            ((NoteAdapter) mDrawerListView.getAdapter()).add(e);
+
+        mDrawerListView.invalidateViews();
     }
 
     private void readVersions() {
         Log.d(TAG, "Loading Hashmaps for files and folders");
         try {
-            ObjectInputStream inputStream = new ObjectInputStream(getActivity().openFileInput(RandomValue + "Files"));
-            Object object = inputStream.readObject();
-            mFileVersions = (HashMap<String, String>) object;
-            inputStream.close();
-            inputStream = new ObjectInputStream(getActivity().openFileInput(RandomValue + "Folder"));
-            mFolderVersions = (HashMap<String, String>) inputStream.readObject();
+            ObjectInputStream inputStream = new ObjectInputStream(getActivity().openFileInput(RandomValue + "Versions"));
+            mVersions = (HashMap<String, HashMap<SerializableEntry, String>>) inputStream.readObject();
             inputStream.close();
         } catch (ClassNotFoundException exception) {
             exception.printStackTrace();
@@ -212,27 +234,21 @@ public class NavigationDrawerFragment extends Fragment {
         } catch (IOException exception) {
             exception.printStackTrace();
         }
-
-        if (mFileVersions == null)
-            mFileVersions = new HashMap<>();
-        if (mFolderVersions == null)
-            mFolderVersions = new HashMap<>();
+        if (mVersions == null){
+            mVersions = new HashMap<>();
+            mVersions.put(mCurrentFolder, new HashMap<SerializableEntry, String>());
+        }
     }
 
     private void writeVersions() {
         Log.d(TAG, "Writing Hashmaps for files and folders");
         try {
-            ObjectOutputStream outputStream = new ObjectOutputStream(getActivity().openFileOutput(RandomValue + "Files", Context.MODE_PRIVATE));
-            outputStream.writeObject(mFileVersions);
-            outputStream.close();
-            outputStream = new ObjectOutputStream(getActivity().openFileOutput(RandomValue + "Folder", Context.MODE_PRIVATE));
-            outputStream.writeObject(mFolderVersions);
+            ObjectOutputStream outputStream = new ObjectOutputStream(getActivity().openFileOutput(RandomValue + "Versions", Context.MODE_PRIVATE));
+            outputStream.writeObject(mVersions);
             outputStream.flush();
             outputStream.close();
         } catch (FileNotFoundException exception) {
-            Log.d(TAG, "Not found. Writing new Hashmaps for files and folders");
-            mFileVersions = new HashMap<>();
-            mFolderVersions = new HashMap<>();
+            Log.d(TAG, "Hashmaps for Versions not found.");
         } catch (IOException exception) {
             exception.printStackTrace();
         }
@@ -263,33 +279,38 @@ public class NavigationDrawerFragment extends Fragment {
         return mDrawerLayout != null && mDrawerLayout.isDrawerOpen(mFragmentContainerView);
     }
 
-    private void saveEntriesToStorage(List<Entry> entries) {
+    public void saveEntriesToStorage(List<Entry> entries) {
 
-        Log.d(TAG, "mFileVersions: " + mFileVersions);
+        HashMap<SerializableEntry, String> currentDirectory = mVersions.get(mCurrentFolder);
+
+        Log.d(TAG, "mFileVersions: " + mVersions);
+//        boolean reloadListView = false;
 
         for (Entry entry : entries) {
 
-            if(entry.isDir)
+            if (entry.isDir)
                 continue;
 
-            if (mFileVersions.containsKey(entry.path)) {
-                if (mFileVersions.get(entry.path).equals(entry.rev)) {
+            if (currentDirectory.containsKey(entry)) {
+                if (currentDirectory.get(entry).equals(entry.rev)) {
                     Log.d(TAG, "File " + entry.path + " exist and is up to date");
                 } else {
-                    Log.d(TAG, "File " + entry.path + " exist but is NOT up to date. Downloading new Version.");
-                    new DownloadFile(getActivity(), mDBApi, entry, mFileVersions).execute();
+                    Log.d(TAG, "File " + entry.fileName() + " exist but is NOT up to date. Downloading new Version.");
+                    new DownloadFile(getActivity(), mDBApi, entry, currentDirectory).execute();
                 }
             } else {
-                Log.d(TAG, "File " + entry.path + " does not exist. Creating now.");
+                Log.d(TAG, "File " + entry.fileName() + " does not exist. Creating now.");
 
-                new DownloadFile(getActivity(), mDBApi, entry, mFileVersions).execute();
+                new DownloadFile(getActivity(), mDBApi, entry, currentDirectory).execute();
+//                reloadListView = true;
             }
         }
+
+//        if(reloadListView)
+            addEntriesListView(entries);
     }
 
-    public void addEntries(List<Entry> entries) {
-
-        saveEntriesToStorage(entries);
+    private void addEntriesListView(List<Entry> entries) {
 
         if (!mInSubfolder) {
             getActionBar().setHomeButtonEnabled(false);
@@ -314,11 +335,8 @@ public class NavigationDrawerFragment extends Fragment {
             }
         }
 
-        for (Entry e : entries) {
-            if (e.isDeleted)
-                continue;
+        for (Entry e : entries)
             ((NoteAdapter) mDrawerListView.getAdapter()).add(e);
-        }
 
         mDrawerListView.invalidateViews();
     }
@@ -409,6 +427,8 @@ public class NavigationDrawerFragment extends Fragment {
                 mCurrentFolder = entry.path + "/";
                 mInSubfolder = true;
                 getActivity().supportInvalidateOptionsMenu(); // calls onPrepareOptionsMenu()
+                if(mVersions.get(mCurrentFolder) == null)
+                    mVersions.put(mCurrentFolder, new HashMap<SerializableEntry, String>());
                 new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder);
 
             } else {
@@ -686,6 +706,7 @@ public class NavigationDrawerFragment extends Fragment {
 
     public interface NavigationDrawerCallbacks {
         void onNavigationDrawerItemSelected(Entry file);
+
         void onClickedSignOut();
     }
 }

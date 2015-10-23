@@ -41,7 +41,7 @@ public class ShowFolderStructure extends AsyncTask<String, Void, DropboxAPI.Entr
         if (result == null)
             return;
 
-        mNavigationDrawerFragment.addEntries(result.contents);
+        mNavigationDrawerFragment.saveEntriesToStorage(result.contents);
     }
 
     @Override

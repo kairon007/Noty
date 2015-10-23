@@ -19,6 +19,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
+
+import de.adrianbartnik.noty.util.SerializableEntry;
 
 public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
 
@@ -27,12 +30,12 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
     private FragmentActivity mFragmentActivity;
     private DropboxAPI<?> mApi;
     private Entry mEntry;
-    private HashMap<String, String> mFileVersions;
+    private HashMap<SerializableEntry, String> mFileVersions;
 
     private FileOutputStream mFos;
     private String mErrorMsg;
 
-    public DownloadFile(FragmentActivity activity, DropboxAPI<?> api, Entry entry, HashMap<String, String> fileVersions) {
+    public DownloadFile(FragmentActivity activity, DropboxAPI<?> api, Entry entry, HashMap<SerializableEntry, String> fileVersions) {
         // We set the context this way so we don't accidentally leak activities
         mFragmentActivity = activity;
 
@@ -57,7 +60,17 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
                 }
             });
 
-            mFileVersions.put(mEntry.path, (mEntry.rev == null ? "" : mEntry.rev));
+            Map<String, Object> map = new HashMap<>();
+            map.put("bytes", mEntry.bytes);
+            map.put("hash", mEntry.hash);
+            map.put("isDir", mEntry.isDir);
+            map.put("modified", mEntry.modified);
+            map.put("path", mEntry.path);
+            map.put("root", mEntry.root);
+            map.put("size", mEntry.size);
+            map.put("rev", mEntry.rev);
+
+            mFileVersions.put(new SerializableEntry(map), (mEntry.rev == null ? "" : mEntry.rev));
 
             Log.d(TAG, "File " + mEntry.path + " Size: " + info.getFileSize() + " Revision: " + (mEntry.rev == null ? "" : mEntry.rev));
 
