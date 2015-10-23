@@ -14,13 +14,22 @@ public class SerializableEntry extends DropboxAPI.Entry implements Externalizabl
 
     static final long serialVersionUID = 4209360273818925922L;
 
+    public SerializableEntry(){}
+
     public SerializableEntry(Map<String, Object> map){
         super(map);
         Log.d("Entry", "Constructor");
     }
 
-    public SerializableEntry(){
-
+    public SerializableEntry(DropboxAPI.Entry entry){
+        this.bytes = entry.bytes;
+        this.hash = entry.hash;
+        this.isDir = entry.isDir;
+        this.modified = entry.modified;
+        this.path = entry.path;
+        this.root = entry.root;
+        this.size = entry.size;
+        this.rev = entry.rev;
     }
 
     @Override
@@ -47,5 +56,15 @@ public class SerializableEntry extends DropboxAPI.Entry implements Externalizabl
         output.writeObject(root);
         output.writeObject(size);
         output.writeObject(rev);
+    }
+
+    @Override
+    public String toString(){
+        StringBuilder result = new StringBuilder();
+
+        result.append(this.getClass().getSimpleName() + " - ");
+        result.append(path);
+        result.append(" Rev: " + rev);
+        return result.toString();
     }
 }

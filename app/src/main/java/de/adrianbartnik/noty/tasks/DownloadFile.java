@@ -60,17 +60,7 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
                 }
             });
 
-            Map<String, Object> map = new HashMap<>();
-            map.put("bytes", mEntry.bytes);
-            map.put("hash", mEntry.hash);
-            map.put("isDir", mEntry.isDir);
-            map.put("modified", mEntry.modified);
-            map.put("path", mEntry.path);
-            map.put("root", mEntry.root);
-            map.put("size", mEntry.size);
-            map.put("rev", mEntry.rev);
-
-            mFileVersions.put(new SerializableEntry(map), (mEntry.rev == null ? "" : mEntry.rev));
+            mFileVersions.put(new SerializableEntry(mEntry), (mEntry.rev == null ? "" : mEntry.rev));
 
             Log.d(TAG, "File " + mEntry.path + " Size: " + info.getFileSize() + " Revision: " + (mEntry.rev == null ? "" : mEntry.rev));
 

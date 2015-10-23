@@ -58,7 +58,7 @@ public class NavigationDrawerFragment extends Fragment {
     /**
      * Used for temporary files on the internal storage
      */
-    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966f";
+    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966g";
     public Entry mCurrentEntry;
     private NavigationDrawerCallbacks mCallbacks;
     private ActionBarDrawerToggle mDrawerToggle;
@@ -222,7 +222,7 @@ public class NavigationDrawerFragment extends Fragment {
     }
 
     private void readVersions() {
-        Log.d(TAG, "Loading Hashmaps for files and folders");
+        Log.d(TAG, "Loading Hashmaps for Versions");
         try {
             ObjectInputStream inputStream = new ObjectInputStream(getActivity().openFileInput(RandomValue + "Versions"));
             mVersions = (HashMap<String, HashMap<SerializableEntry, String>>) inputStream.readObject();
@@ -230,7 +230,7 @@ public class NavigationDrawerFragment extends Fragment {
         } catch (ClassNotFoundException exception) {
             exception.printStackTrace();
         } catch (FileNotFoundException exception) {
-            Log.d(TAG, "Not found. Creating new Hashmaps for files and folders");
+            Log.d(TAG, "Not found. Creating new Hashmaps for Versions.");
         } catch (IOException exception) {
             exception.printStackTrace();
         }
@@ -284,15 +284,18 @@ public class NavigationDrawerFragment extends Fragment {
         HashMap<SerializableEntry, String> currentDirectory = mVersions.get(mCurrentFolder);
 
         Log.d(TAG, "mFileVersions: " + mVersions);
-//        boolean reloadListView = false;
+        boolean reloadListView = false;
+        SerializableEntry serializableEntry;
 
         for (Entry entry : entries) {
+
+            serializableEntry = new SerializableEntry(entry);
 
             if (entry.isDir)
                 continue;
 
-            if (currentDirectory.containsKey(entry)) {
-                if (currentDirectory.get(entry).equals(entry.rev)) {
+            if (currentDirectory.containsKey(serializableEntry)) {
+                if (currentDirectory.get(serializableEntry).equals(entry.rev)) {
                     Log.d(TAG, "File " + entry.path + " exist and is up to date");
                 } else {
                     Log.d(TAG, "File " + entry.fileName() + " exist but is NOT up to date. Downloading new Version.");
@@ -302,12 +305,14 @@ public class NavigationDrawerFragment extends Fragment {
                 Log.d(TAG, "File " + entry.fileName() + " does not exist. Creating now.");
 
                 new DownloadFile(getActivity(), mDBApi, entry, currentDirectory).execute();
-//                reloadListView = true;
+                reloadListView = true;
             }
         }
 
-//        if(reloadListView)
+        if(reloadListView){
+            Log.d(TAG, "New files available. Reload ListView");
             addEntriesListView(entries);
+        }
     }
 
     private void addEntriesListView(List<Entry> entries) {
