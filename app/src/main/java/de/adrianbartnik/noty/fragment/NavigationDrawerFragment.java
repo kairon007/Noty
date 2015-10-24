@@ -37,6 +37,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -58,7 +60,7 @@ public class NavigationDrawerFragment extends Fragment {
     /**
      * Used for temporary files on the internal storage
      */
-    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966k";
+    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966p";
     public SerializableEntry mCurrentEntry;
     private NavigationDrawerCallbacks mCallbacks;
     private ActionBarDrawerToggle mDrawerToggle;
@@ -70,7 +72,6 @@ public class NavigationDrawerFragment extends Fragment {
     private ListView mDrawerListView;
     private View mFragmentContainerView;
     private FloatingActionButton fab;
-    private String mParentFolder = "/";
     private String mCurrentFolder = "/";
     private boolean mInSubfolder = false;
     private DropboxAPI<AndroidAuthSession> mDBApi;
@@ -199,6 +200,12 @@ public class NavigationDrawerFragment extends Fragment {
     private void showLocalFiles(String path) {
 
         Log.d(TAG, "Showing local files for path: " + path);
+        Log.d(TAG, "DEBUG: " + mVersions.containsKey("/Folder with Space/Folder with spaces 2"));
+        Log.d(TAG, "DEBUG: " + mVersions.containsKey("/Folder with Space"));
+        Log.d(TAG, "DEBUG: " + mVersions.containsKey("/"));
+
+
+        setHomeButton();
 
         ArrayList<SerializableEntry> directory = new ArrayList<>(mVersions.get(path).keySet());
 
@@ -206,6 +213,8 @@ public class NavigationDrawerFragment extends Fragment {
         SerializableEntry entry;
 
         ((NoteAdapter) mDrawerListView.getAdapter()).clear();
+
+        Collections.sort(directory);
 
         // First show folders and then files.
         // First add all folders, remove them from entries and then add remaining files
@@ -291,6 +300,8 @@ public class NavigationDrawerFragment extends Fragment {
 
     public void saveEntriesToStorage(List<SerializableEntry> entries) {
 
+        // TODO Check for deleted files from entries. Delete in local storage too
+
         HashMap<SerializableEntry, String> currentDirectory = mVersions.get(mCurrentFolder);
 
         Log.d(TAG, "mFileVersions: " + mVersions);
@@ -326,13 +337,15 @@ public class NavigationDrawerFragment extends Fragment {
         }
     }
 
-    private void addEntriesListView(List<SerializableEntry> entries) {
-
+    private void setHomeButton(){
         if (!mInSubfolder) {
             getActionBar().setHomeButtonEnabled(false);
             getActivity().supportInvalidateOptionsMenu();
         } else
             getActionBar().setHomeButtonEnabled(true);
+    }
+
+    private void addEntriesListView(List<SerializableEntry> entries) {
 
         ((ArrayAdapter) mDrawerListView.getAdapter()).clear();
 
@@ -436,10 +449,9 @@ public class NavigationDrawerFragment extends Fragment {
 
             SerializableEntry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
 
-            Log.d(TAG, "Subfolder: " + mInSubfolder + " Entry: " + entry.fileName() + "Path: " + entry.path);
+            Log.d(TAG, "Subfolder: " + mInSubfolder + " Path: " + entry.path);
 
             if (entry.isDir) {
-                mParentFolder = entry.parentPath();
                 mCurrentFolder = entry.path;
                 mInSubfolder = true;
                 getActivity().supportInvalidateOptionsMenu(); // calls onPrepareOptionsMenu()
@@ -532,11 +544,14 @@ public class NavigationDrawerFragment extends Fragment {
     }
 
     public String parentPath(String path) {
+        int ind = path.lastIndexOf("/");
+
         if (path.equals("/")) {
-            return "";
+            return "/";
+        } else if (ind == 0){
+            return "/";
         } else {
-            int ind = path.lastIndexOf(47);
-            return path.substring(0, ind + 1);
+            return path.substring(0, ind);
         }
     }
 
@@ -548,23 +563,19 @@ public class NavigationDrawerFragment extends Fragment {
                 if (!isDrawerOpen())
                     mDrawerLayout.openDrawer(mFragmentContainerView);
                 else {
-                    Log.d(TAG, "CurrentFolder: " + mCurrentFolder + " ParentFolder: " + mParentFolder);
-                    Log.d(TAG, "ParentFolderMethod: " + parentPath(mCurrentFolder));
-                    if (mParentFolder.lastIndexOf('/') == 0) {
-                        mParentFolder = "/";
+                    if (mCurrentFolder.lastIndexOf('/') == 0) {
                         mCurrentFolder = "/";
                         mInSubfolder = false;
-                    } else {
-                        mCurrentFolder = mParentFolder;
-                        mParentFolder = mParentFolder.substring(0, mParentFolder.lastIndexOf('/'));
-                    }
-                    showLocalFiles(mParentFolder);
-                    new ShowFolderStructure(mDBApi, this).execute(mParentFolder);
+                    } else
+                        mCurrentFolder = parentPath(mCurrentFolder);
+
+                    showLocalFiles(mCurrentFolder);
+                    new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder);
                 }
                 return true;
 
             case R.id.action_sync:
-                new ShowFolderStructure(mDBApi, this).execute(mParentFolder);
+                new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder);
 
                 uploadCurrentFile();
 

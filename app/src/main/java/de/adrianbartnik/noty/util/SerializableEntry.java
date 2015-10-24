@@ -4,7 +4,7 @@ import com.dropbox.client2.DropboxAPI;
 
 import java.io.Serializable;
 
-public class SerializableEntry implements Serializable {
+public class SerializableEntry implements Serializable, Comparable{
 
     static final long serialVersionUID = 4209360273818925922L;
 
@@ -22,10 +22,26 @@ public class SerializableEntry implements Serializable {
         this.hash = entry.hash;
         this.isDir = entry.isDir;
         this.modified = entry.modified;
-        this.path = entry.path;
+        this.path = makePathCaseInsensitive(entry.path);
         this.root = entry.root;
         this.size = entry.size;
         this.rev = entry.rev;
+    }
+
+    private String makePathCaseInsensitive(String path){
+
+        String result = "";
+        int index = path.lastIndexOf("/");
+        while (index > 0){
+            result = path.substring(index + 1, index + 2).toUpperCase() + path.substring(index + 2).toLowerCase() + "/" + result;
+            path = path.substring(0, index);
+            index = path.lastIndexOf("/");
+            // System.out.println("Path: " + path + " Result: " + result + " Index: " + index);
+        }
+        if(result.length() == 0)
+            return "/" + path.substring(1, 2).toUpperCase() + path.substring(2).toLowerCase();
+        else
+            return "/" + path.substring(1, 2).toUpperCase() + path.substring(2).toLowerCase() + "/" + result.substring(0, result.length() - 1);
     }
 
     public String fileName() {
@@ -49,22 +65,25 @@ public class SerializableEntry implements Serializable {
 
         SerializableEntry that = (SerializableEntry) o;
 
-        if (isDir != that.isDir) return false;
-        if (!path.equals(that.path)) return false;
-        return rev.equals(that.rev);
+        return path.equals(that.path);
+
     }
 
     @Override
     public int hashCode() {
-        int result = (isDir ? 1 : 0);
-        result = 31 * result + path.hashCode();
-        result = 31 * result + rev.hashCode();
-        return result;
+        return path.hashCode();
     }
 
     @Override
     public String toString() {
-        return path + " Rev: " + rev;
+        return path + ( isDir ? " Rev: " + rev : " Hash: " + hash);
     }
 
+    @Override
+    public int compareTo(Object another) {
+        if(another instanceof SerializableEntry){
+            return fileName().compareTo(((SerializableEntry) another).fileName());
+        } else
+            return 0;
+    }
 }
