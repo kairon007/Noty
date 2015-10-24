@@ -25,13 +25,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import de.adrianbartnik.noty.util.SerializableEntry;
+
 public class UploadFile extends AsyncTask<String, Long, Boolean> {
 
     private static final String TAG = UploadFile.class.getName();
     private final ProgressDialog mDialog;
     private FragmentActivity mFragmentActivity;
     private DropboxAPI<?> mDBApi;
-    private DropboxAPI.Entry mEntry;
+    private SerializableEntry mEntry;
 
     private FileOutputStream mFos;
 
@@ -39,7 +41,7 @@ public class UploadFile extends AsyncTask<String, Long, Boolean> {
     private Long mFileLen;
     private String mErrorMsg;
 
-    public UploadFile(FragmentActivity activity, DropboxAPI<?> api, DropboxAPI.Entry entry) {
+    public UploadFile(FragmentActivity activity, DropboxAPI<?> api, SerializableEntry entry) {
 
         mFragmentActivity = activity;
         mDBApi = api;

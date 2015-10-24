@@ -19,6 +19,7 @@ import java.util.ArrayList;
 
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
+import de.adrianbartnik.noty.util.SerializableEntry;
 
 public class UndoDeleteNode extends AsyncTask<Void, Long, Boolean> {
 
@@ -27,12 +28,12 @@ public class UndoDeleteNode extends AsyncTask<Void, Long, Boolean> {
     private FragmentActivity mFragmentActivity;
     private DropboxAPI<?> mDBApi;
     private NavigationDrawerFragment mNavigationDrawerFragment;
-    private ArrayList<DropboxAPI.Entry> mEntries;
+    private ArrayList<SerializableEntry> mEntries;
 
 
     private String mErrorMsg;
 
-    public UndoDeleteNode(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, ArrayList<DropboxAPI.Entry> entries) {
+    public UndoDeleteNode(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, ArrayList<SerializableEntry> entries) {
 
         mFragmentActivity = activity;
         mDBApi = api;
@@ -46,7 +47,7 @@ public class UndoDeleteNode extends AsyncTask<Void, Long, Boolean> {
         try {
 
             // Or use different AsyncTasks?
-            for(DropboxAPI.Entry entry : mEntries){
+            for(SerializableEntry entry : mEntries){
                 Log.d(TAG, "Restoring Node: " + entry.fileName() + " from " + entry.parentPath() + ". Textnote: " + entry.isDir);
                 mDBApi.restore(entry.path, entry.rev);
                 Log.d(TAG, "Restored file " + entry.path + " - Done");

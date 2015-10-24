@@ -7,7 +7,10 @@ import android.util.Log;
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.exception.DropboxException;
 
+import java.util.ArrayList;
+
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
+import de.adrianbartnik.noty.util.SerializableEntry;
 
 public class ShowFolderStructure extends AsyncTask<String, Void, DropboxAPI.Entry> {
 
@@ -41,7 +44,13 @@ public class ShowFolderStructure extends AsyncTask<String, Void, DropboxAPI.Entr
         if (result == null)
             return;
 
-        mNavigationDrawerFragment.saveEntriesToStorage(result.contents);
+        ArrayList<SerializableEntry> list = new ArrayList<>();
+        for(DropboxAPI.Entry entry : result.contents)
+            list.add(new SerializableEntry(entry));
+
+        Log.d(TAG, "Got new file list from Dropbox: " + list);
+
+        mNavigationDrawerFragment.saveEntriesToStorage(list);
     }
 
     @Override

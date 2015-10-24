@@ -14,6 +14,7 @@ import com.dropbox.client2.exception.DropboxServerException;
 import com.dropbox.client2.exception.DropboxUnlinkedException;
 
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
+import de.adrianbartnik.noty.util.SerializableEntry;
 
 public class MoveNode extends AsyncTask<Void, Long, Boolean> {
 
@@ -22,11 +23,11 @@ public class MoveNode extends AsyncTask<Void, Long, Boolean> {
     private FragmentActivity mFragmentActivity;
     private DropboxAPI<?> mDBApi;
     private NavigationDrawerFragment mNavigationDrawerFragment;
-    private DropboxAPI.Entry mEntry;
+    private SerializableEntry mEntry;
     private String newName;
     private String mErrorMsg;
 
-    public MoveNode(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, DropboxAPI.Entry entry, String newName) {
+    public MoveNode(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, SerializableEntry entry, String newName) {
 
         // TODO Check if deleted file was a folder
 

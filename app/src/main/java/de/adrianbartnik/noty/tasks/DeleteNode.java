@@ -19,6 +19,7 @@ import java.util.ArrayList;
 
 import de.adrianbartnik.noty.R;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
+import de.adrianbartnik.noty.util.SerializableEntry;
 
 public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
 
@@ -27,12 +28,12 @@ public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
     private FragmentActivity mFragmentActivity;
     private DropboxAPI<?> mDBApi;
     private NavigationDrawerFragment mNavigationDrawerFragment;
-    private ArrayList<DropboxAPI.Entry> mEntries;
+    private ArrayList<SerializableEntry> mEntries;
 
 
     private String mErrorMsg;
 
-    public DeleteNode(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, ArrayList<DropboxAPI.Entry> entries) {
+    public DeleteNode(FragmentActivity activity, DropboxAPI<?> api, NavigationDrawerFragment fragment, ArrayList<SerializableEntry> entries) {
 
         // TODO Check if deleted file was a folder
 
@@ -48,7 +49,7 @@ public class DeleteNode extends AsyncTask<Void, Long, Boolean> {
         try {
 
             // Or use different AsyncTasks?
-            for(DropboxAPI.Entry entry : mEntries){
+            for(SerializableEntry entry : mEntries){
                 Log.d(TAG, "Deleting Node: " + entry.fileName() + " from " + entry.parentPath() + ". Textnote: " + entry.isDir);
                 mDBApi.delete(entry.path);
                 Log.d(TAG, "Deleting file " + entry.path + " - Done");

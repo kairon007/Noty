@@ -30,6 +30,7 @@ import de.adrianbartnik.noty.config.Constants;
 import de.adrianbartnik.noty.fragment.NavigationDrawerFragment;
 import de.adrianbartnik.noty.fragment.NoteFragment;
 import de.adrianbartnik.noty.tasks.ShowFolderStructure;
+import de.adrianbartnik.noty.util.SerializableEntry;
 
 public class MainActivity extends AppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks, NoteFragment.NoteFragmentCallbacks {
 
@@ -77,7 +78,7 @@ public class MainActivity extends AppCompatActivity implements NavigationDrawerF
     }
 
     @Override
-    public void onNavigationDrawerItemSelected(Entry entry) {
+    public void onNavigationDrawerItemSelected(SerializableEntry entry) {
 
         Log.d(TAG, "Opening Node: " + getFilesDir() + entry.path);
 

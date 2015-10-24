@@ -17,13 +17,14 @@ import com.dropbox.client2.DropboxAPI;
 import java.util.ArrayList;
 
 import de.adrianbartnik.noty.R;
+import de.adrianbartnik.noty.util.SerializableEntry;
 
-public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
+public class NoteAdapter extends ArrayAdapter<SerializableEntry> {
 
     private Context context;
-    private ArrayList<DropboxAPI.Entry> entries;
+    private ArrayList<SerializableEntry> entries;
 
-    public NoteAdapter(Context context, ArrayList<DropboxAPI.Entry> entries) {
+    public NoteAdapter(Context context, ArrayList<SerializableEntry> entries) {
         super(context, R.layout.layout_item_note, entries);
         this.context = context;
         this.entries = entries;
@@ -35,7 +36,7 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
     }
 
     @Override
-    public DropboxAPI.Entry getItem(int i) {
+    public SerializableEntry getItem(int i) {
         return entries.get(i);
     }
 
@@ -48,8 +49,8 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
         return entries.get(position).hashCode();
     }
 
-    public DropboxAPI.Entry getItemById(long id){
-        for(DropboxAPI.Entry entry : entries)
+    public SerializableEntry getItemById(long id){
+        for(SerializableEntry entry: entries)
             if(entry.hashCode() == id)
                 return entry;
 
@@ -61,7 +62,7 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
         entries.clear();
     }
 
-    public ArrayList<DropboxAPI.Entry> getEntries() {
+    public ArrayList<SerializableEntry> getEntries() {
         return entries;
     }
 
@@ -78,7 +79,7 @@ public class NoteAdapter extends ArrayAdapter<DropboxAPI.Entry> {
     @Override
     public View getView(final int position, View convertView, ViewGroup parent) {
 
-        DropboxAPI.Entry entry = entries.get(position);
+        SerializableEntry entry = entries.get(position);
 
         ViewHolder viewHolder;
 

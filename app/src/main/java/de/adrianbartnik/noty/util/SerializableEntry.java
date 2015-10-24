@@ -1,27 +1,23 @@
 package de.adrianbartnik.noty.util;
 
-import android.util.Log;
-
 import com.dropbox.client2.DropboxAPI;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.util.Map;
+import java.io.Serializable;
 
-public class SerializableEntry extends DropboxAPI.Entry implements Externalizable{
+public class SerializableEntry implements Serializable {
 
     static final long serialVersionUID = 4209360273818925922L;
 
-    public SerializableEntry(){}
+    public long bytes;
+    public String hash;
+    public boolean isDir;
+    public String modified;
+    public String path;
+    public String root;
+    public String size;
+    public String rev;
 
-    public SerializableEntry(Map<String, Object> map){
-        super(map);
-        Log.d("Entry", "Constructor");
-    }
-
-    public SerializableEntry(DropboxAPI.Entry entry){
+    public SerializableEntry(DropboxAPI.Entry entry) {
         this.bytes = entry.bytes;
         this.hash = entry.hash;
         this.isDir = entry.isDir;
@@ -32,39 +28,43 @@ public class SerializableEntry extends DropboxAPI.Entry implements Externalizabl
         this.rev = entry.rev;
     }
 
-    @Override
-    public void readExternal(ObjectInput input) throws IOException, ClassNotFoundException {
-        Log.d("Entry", "Entry: Read");
-        this.bytes = input.readLong();
-        this.hash = (String) input.readObject();
-        this.isDir = input.readBoolean();
-        this.modified = (String) input.readObject();
-        this.path = (String) input.readObject();
-        this.root = (String) input.readObject();
-        this.size = (String) input.readObject();
-        this.rev = (String) input.readObject();
+    public String fileName() {
+        int ind = this.path.lastIndexOf(47);
+        return this.path.substring(ind + 1, this.path.length());
+    }
+
+    public String parentPath() {
+        if (this.path.equals("/")) {
+            return "";
+        } else {
+            int ind = this.path.lastIndexOf(47);
+            return this.path.substring(0, ind + 1);
+        }
     }
 
     @Override
-    public void writeExternal(ObjectOutput output) throws IOException {
-        Log.d("Entry", "Entry: Write");
-        output.writeLong(bytes);
-        output.writeObject(hash);
-        output.writeBoolean(isDir);
-        output.writeObject(modified);
-        output.writeObject(path);
-        output.writeObject(root);
-        output.writeObject(size);
-        output.writeObject(rev);
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        SerializableEntry that = (SerializableEntry) o;
+
+        if (isDir != that.isDir) return false;
+        if (!path.equals(that.path)) return false;
+        return rev.equals(that.rev);
     }
 
     @Override
-    public String toString(){
-        StringBuilder result = new StringBuilder();
-
-        result.append(this.getClass().getSimpleName() + " - ");
-        result.append(path);
-        result.append(" Rev: " + rev);
-        return result.toString();
+    public int hashCode() {
+        int result = (isDir ? 1 : 0);
+        result = 31 * result + path.hashCode();
+        result = 31 * result + rev.hashCode();
+        return result;
     }
+
+    @Override
+    public String toString() {
+        return path + " Rev: " + rev;
+    }
+
 }

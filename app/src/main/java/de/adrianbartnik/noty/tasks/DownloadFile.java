@@ -6,7 +6,6 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.dropbox.client2.DropboxAPI;
-import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.ProgressListener;
 import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.exception.DropboxIOException;
@@ -19,7 +18,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Map;
 
 import de.adrianbartnik.noty.util.SerializableEntry;
 
@@ -29,19 +27,19 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
 
     private FragmentActivity mFragmentActivity;
     private DropboxAPI<?> mApi;
-    private Entry mEntry;
-    private HashMap<SerializableEntry, String> mFileVersions;
+    private SerializableEntry mEntry;
+    private HashMap<SerializableEntry, String> mVersions;
 
     private FileOutputStream mFos;
     private String mErrorMsg;
 
-    public DownloadFile(FragmentActivity activity, DropboxAPI<?> api, Entry entry, HashMap<SerializableEntry, String> fileVersions) {
+    public DownloadFile(FragmentActivity activity, DropboxAPI<?> api, SerializableEntry entry, HashMap<SerializableEntry, String> fileVersions) {
         // We set the context this way so we don't accidentally leak activities
         mFragmentActivity = activity;
 
         mApi = api;
         mEntry = entry;
-        mFileVersions = fileVersions;
+        mVersions = fileVersions;
     }
 
     @Override
@@ -60,7 +58,7 @@ public class DownloadFile extends AsyncTask<Void, Long, Boolean> {
                 }
             });
 
-            mFileVersions.put(new SerializableEntry(mEntry), (mEntry.rev == null ? "" : mEntry.rev));
+            mVersions.put(mEntry, (mEntry.rev == null ? "" : mEntry.rev));
 
             Log.d(TAG, "File " + mEntry.path + " Size: " + info.getFileSize() + " Revision: " + (mEntry.rev == null ? "" : mEntry.rev));
 

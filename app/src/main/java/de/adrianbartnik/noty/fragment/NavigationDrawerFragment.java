@@ -58,8 +58,8 @@ public class NavigationDrawerFragment extends Fragment {
     /**
      * Used for temporary files on the internal storage
      */
-    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966g";
-    public Entry mCurrentEntry;
+    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966k";
+    public SerializableEntry mCurrentEntry;
     private NavigationDrawerCallbacks mCallbacks;
     private ActionBarDrawerToggle mDrawerToggle;
     /**
@@ -110,7 +110,7 @@ public class NavigationDrawerFragment extends Fragment {
             switch (item.getItemId()) {
                 case R.id.action_drawer_cab_edit:
 
-                    Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItemById(ids[0]);
+                    SerializableEntry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItemById(ids[0]);
 
                     createMoveDialog(getActivity(), entry);
 
@@ -189,19 +189,23 @@ public class NavigationDrawerFragment extends Fragment {
                 return true;
             }
         });
-        NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<Entry>());
+        NoteAdapter noteAdapter = new NoteAdapter(getActivity(), new ArrayList<SerializableEntry>());
         mDrawerListView.setAdapter(noteAdapter);
 
         readVersions();
-        showLocalFiles();
+        showLocalFiles(mCurrentFolder);
     }
 
-    private void showLocalFiles() {
+    private void showLocalFiles(String path) {
 
-        ArrayList<SerializableEntry> directory = new ArrayList<>(mVersions.get(mCurrentFolder).keySet());
+        Log.d(TAG, "Showing local files for path: " + path);
+
+        ArrayList<SerializableEntry> directory = new ArrayList<>(mVersions.get(path).keySet());
 
         int size = directory.size();
-        Entry entry;
+        SerializableEntry entry;
+
+        ((NoteAdapter) mDrawerListView.getAdapter()).clear();
 
         // First show folders and then files.
         // First add all folders, remove them from entries and then add remaining files
@@ -215,7 +219,7 @@ public class NavigationDrawerFragment extends Fragment {
             }
         }
 
-        for (Entry e : directory)
+        for (SerializableEntry e : directory)
             ((NoteAdapter) mDrawerListView.getAdapter()).add(e);
 
         mDrawerListView.invalidateViews();
@@ -279,23 +283,30 @@ public class NavigationDrawerFragment extends Fragment {
         return mDrawerLayout != null && mDrawerLayout.isDrawerOpen(mFragmentContainerView);
     }
 
-    public void saveEntriesToStorage(List<Entry> entries) {
+    private void createFolderInStorage(HashMap<SerializableEntry, String> map, SerializableEntry entry){
+        map.put(entry, (entry.hash == null ? "" : entry.hash));
+
+        Log.d(TAG, "Directory " + entry.path + " Hash: " + (entry.hash == null ? "" : entry.hash));
+    }
+
+    public void saveEntriesToStorage(List<SerializableEntry> entries) {
 
         HashMap<SerializableEntry, String> currentDirectory = mVersions.get(mCurrentFolder);
 
         Log.d(TAG, "mFileVersions: " + mVersions);
         boolean reloadListView = false;
-        SerializableEntry serializableEntry;
 
-        for (Entry entry : entries) {
+        for (SerializableEntry entry : entries) {
 
-            serializableEntry = new SerializableEntry(entry);
-
-            if (entry.isDir)
-                continue;
-
-            if (currentDirectory.containsKey(serializableEntry)) {
-                if (currentDirectory.get(serializableEntry).equals(entry.rev)) {
+            if (entry.isDir){
+                if (currentDirectory.containsKey(entry))
+                    Log.d(TAG, "Directory " + entry.path + " exist and is up to date");
+                else {
+                    createFolderInStorage(currentDirectory, entry);
+                    reloadListView = true;
+                }
+            } else if (currentDirectory.containsKey(entry)) {
+                if (currentDirectory.get(entry).equals(entry.rev)) {
                     Log.d(TAG, "File " + entry.path + " exist and is up to date");
                 } else {
                     Log.d(TAG, "File " + entry.fileName() + " exist but is NOT up to date. Downloading new Version.");
@@ -315,7 +326,7 @@ public class NavigationDrawerFragment extends Fragment {
         }
     }
 
-    private void addEntriesListView(List<Entry> entries) {
+    private void addEntriesListView(List<SerializableEntry> entries) {
 
         if (!mInSubfolder) {
             getActionBar().setHomeButtonEnabled(false);
@@ -326,7 +337,7 @@ public class NavigationDrawerFragment extends Fragment {
         ((ArrayAdapter) mDrawerListView.getAdapter()).clear();
 
         int size = entries.size();
-        Entry entry;
+        SerializableEntry entry;
 
         // First show folders and then files.
         // First add all folders, remove them from entries and then add remaining files
@@ -340,7 +351,7 @@ public class NavigationDrawerFragment extends Fragment {
             }
         }
 
-        for (Entry e : entries)
+        for (SerializableEntry e : entries)
             ((NoteAdapter) mDrawerListView.getAdapter()).add(e);
 
         mDrawerListView.invalidateViews();
@@ -423,17 +434,18 @@ public class NavigationDrawerFragment extends Fragment {
 
         if (mCallbacks != null) {
 
-            Entry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
+            SerializableEntry entry = ((NoteAdapter) mDrawerListView.getAdapter()).getItem(position);
 
             Log.d(TAG, "Subfolder: " + mInSubfolder + " Entry: " + entry.fileName() + "Path: " + entry.path);
 
             if (entry.isDir) {
                 mParentFolder = entry.parentPath();
-                mCurrentFolder = entry.path + "/";
+                mCurrentFolder = entry.path;
                 mInSubfolder = true;
                 getActivity().supportInvalidateOptionsMenu(); // calls onPrepareOptionsMenu()
                 if(mVersions.get(mCurrentFolder) == null)
                     mVersions.put(mCurrentFolder, new HashMap<SerializableEntry, String>());
+                showLocalFiles(mCurrentFolder);
                 new ShowFolderStructure(mDBApi, this).execute(mCurrentFolder);
 
             } else {
@@ -519,6 +531,15 @@ public class NavigationDrawerFragment extends Fragment {
         new UploadFile(getActivity(), mDBApi, mCurrentEntry).execute(content);
     }
 
+    public String parentPath(String path) {
+        if (path.equals("/")) {
+            return "";
+        } else {
+            int ind = path.lastIndexOf(47);
+            return path.substring(0, ind + 1);
+        }
+    }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
@@ -527,6 +548,8 @@ public class NavigationDrawerFragment extends Fragment {
                 if (!isDrawerOpen())
                     mDrawerLayout.openDrawer(mFragmentContainerView);
                 else {
+                    Log.d(TAG, "CurrentFolder: " + mCurrentFolder + " ParentFolder: " + mParentFolder);
+                    Log.d(TAG, "ParentFolderMethod: " + parentPath(mCurrentFolder));
                     if (mParentFolder.lastIndexOf('/') == 0) {
                         mParentFolder = "/";
                         mCurrentFolder = "/";
@@ -535,6 +558,7 @@ public class NavigationDrawerFragment extends Fragment {
                         mCurrentFolder = mParentFolder;
                         mParentFolder = mParentFolder.substring(0, mParentFolder.lastIndexOf('/'));
                     }
+                    showLocalFiles(mParentFolder);
                     new ShowFolderStructure(mDBApi, this).execute(mParentFolder);
                 }
                 return true;
@@ -601,7 +625,7 @@ public class NavigationDrawerFragment extends Fragment {
         });
     }
 
-    private void createMoveDialog(final Activity context, final Entry note) {
+    private void createMoveDialog(final Activity context, final SerializableEntry note) {
 
         context.runOnUiThread(new Runnable() {
             @Override
@@ -672,7 +696,7 @@ public class NavigationDrawerFragment extends Fragment {
                     @Override
                     public void onClick(DialogInterface dialog, int id) {
 
-                        ArrayList<Entry> entries = new ArrayList<>(ids.length);
+                        ArrayList<SerializableEntry> entries = new ArrayList<>(ids.length);
                         for (long entryID : ids)
                             entries.add(((NoteAdapter) mDrawerListView.getAdapter()).getItemById(entryID));
 
@@ -710,7 +734,7 @@ public class NavigationDrawerFragment extends Fragment {
     }
 
     public interface NavigationDrawerCallbacks {
-        void onNavigationDrawerItemSelected(Entry file);
+        void onNavigationDrawerItemSelected(SerializableEntry file);
 
         void onClickedSignOut();
     }
