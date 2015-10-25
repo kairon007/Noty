@@ -3,15 +3,11 @@ Android App to keep track of Notes in Dropbox.
 Key features is the synchronization between the app and all files in you Dropbox.
 
 # Todo
-Add caching to UI to not have to get meta data for every folder again
-Show indicator for updates files
+Show indicator for updated files
 Push Content aside when drawer is open
 Add transitions
-Colapse ActionBar in Container to view more of note
-Consistent naming (Note, Node)
+Colapse ActionBar in Container to view more of note - https://www.youtube.com/watch?v=kmUGLURRPkI
 Abstract fragments via Interfaces
-When removen a note, remove from file system as well
-Offline availability
 Change Back-button behavior
 
 # Efficiency

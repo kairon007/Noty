@@ -28,19 +28,19 @@ import android.widget.EditText;
 import android.widget.ListView;
 
 import com.dropbox.client2.DropboxAPI;
-import com.dropbox.client2.DropboxAPI.Entry;
 import com.dropbox.client2.android.AndroidAuthSession;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import de.adrianbartnik.noty.R;
@@ -60,7 +60,7 @@ public class NavigationDrawerFragment extends Fragment {
     /**
      * Used for temporary files on the internal storage
      */
-    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966p";
+    private static final String RandomValue = "ffca4c4f-1ee8-4965-84c1-f9f761da966s";
     public SerializableEntry mCurrentEntry;
     private NavigationDrawerCallbacks mCallbacks;
     private ActionBarDrawerToggle mDrawerToggle;
@@ -200,10 +200,6 @@ public class NavigationDrawerFragment extends Fragment {
     private void showLocalFiles(String path) {
 
         Log.d(TAG, "Showing local files for path: " + path);
-        Log.d(TAG, "DEBUG: " + mVersions.containsKey("/Folder with Space/Folder with spaces 2"));
-        Log.d(TAG, "DEBUG: " + mVersions.containsKey("/Folder with Space"));
-        Log.d(TAG, "DEBUG: " + mVersions.containsKey("/"));
-
 
         setHomeButton();
 
@@ -258,7 +254,6 @@ public class NavigationDrawerFragment extends Fragment {
         try {
             ObjectOutputStream outputStream = new ObjectOutputStream(getActivity().openFileOutput(RandomValue + "Versions", Context.MODE_PRIVATE));
             outputStream.writeObject(mVersions);
-            outputStream.flush();
             outputStream.close();
         } catch (FileNotFoundException exception) {
             Log.d(TAG, "Hashmaps for Versions not found.");
@@ -300,8 +295,6 @@ public class NavigationDrawerFragment extends Fragment {
 
     public void saveEntriesToStorage(List<SerializableEntry> entries) {
 
-        // TODO Check for deleted files from entries. Delete in local storage too
-
         HashMap<SerializableEntry, String> currentDirectory = mVersions.get(mCurrentFolder);
 
         Log.d(TAG, "mFileVersions: " + mVersions);
@@ -325,10 +318,37 @@ public class NavigationDrawerFragment extends Fragment {
                 }
             } else {
                 Log.d(TAG, "File " + entry.fileName() + " does not exist. Creating now.");
-
                 new DownloadFile(getActivity(), mDBApi, entry, currentDirectory).execute();
                 reloadListView = true;
             }
+        }
+
+        HashSet<SerializableEntry> set = new HashSet<>(entries);
+
+        if(!currentDirectory.keySet().equals(set)){
+
+            HashSet<SerializableEntry> diff = new HashSet<>(currentDirectory.keySet());
+            Log.d(TAG, "DIFF: " + diff);
+            diff.removeAll(set);
+
+            // Remove files
+            for(SerializableEntry entry : diff){
+
+                if(entry.isDir)
+                    continue;
+
+                Log.d(TAG, "Removing file " + entry.path);
+
+                File file = new File(getActivity().getFilesDir() + entry.path);
+
+                if(file.delete())
+                    System.out.println(file.getName() + " is deleted!");
+                else
+                    System.out.println("Delete operation is failed.");
+            }
+
+            Log.d(TAG, "Deleting files from cache successful: " + currentDirectory.keySet().retainAll(set));
+            reloadListView = true;
         }
 
         if(reloadListView){
@@ -351,6 +371,8 @@ public class NavigationDrawerFragment extends Fragment {
 
         int size = entries.size();
         SerializableEntry entry;
+
+        Collections.sort(entries);
 
         // First show folders and then files.
         // First add all folders, remove them from entries and then add remaining files
